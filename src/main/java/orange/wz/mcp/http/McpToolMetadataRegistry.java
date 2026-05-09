@@ -9,12 +9,16 @@ import java.util.Map;
 public final class McpToolMetadataRegistry {
     public List<McpToolDescriptor> all() {
         return List.of(
-                new McpToolDescriptor("load_files", "加载 wz/img/xml 文件或目录到当前 MCP 会话。", objectSchema(
+                new McpToolDescriptor("load_files", "加载 wz/img/xml 文件或目录到当前 MCP 会话；若目标根已加载则返回错误。", objectSchema(
                         Map.of(
                                 "paths", arraySchema(stringSchema()),
                                 "key", keySchema()
                         ),
                         List.of("paths", "key")
+                )),
+                new McpToolDescriptor("list_loaded_roots", "列出当前 MCP 会话已加载的根文件或目录。", objectSchema(
+                        Map.of(),
+                        List.of()
                 )),
                 new McpToolDescriptor("unload_node", "卸载指定节点。rootPath 为已加载根文件或目录路径，nodePath 为根内节点路径。", objectSchema(
                         nodeReferenceProperties(),

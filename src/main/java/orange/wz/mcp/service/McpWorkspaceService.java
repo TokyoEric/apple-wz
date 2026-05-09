@@ -23,6 +23,8 @@ public interface McpWorkspaceService {
 
     NodeSummary createImg(McpSessionState session, String fileName, WzKey key);
 
+    List<NodeSummary> listLoadedRoots(McpSessionState session);
+
     WzObject findNode(McpSessionState session, NodeReference reference, boolean autoParse);
 
     List<NodeSummary> listChildren(McpSessionState session, NodeReference reference, boolean autoParse);

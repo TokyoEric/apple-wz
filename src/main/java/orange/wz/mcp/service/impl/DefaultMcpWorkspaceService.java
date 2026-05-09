@@ -35,6 +35,14 @@ public final class DefaultMcpWorkspaceService implements McpWorkspaceService {
 
         session.lock();
         try {
+            List<String> requestedRootPaths = new ArrayList<>();
+            for (File f : files) {
+                if (f == null) continue;
+                String requestedRootPath = NodePathResolver.normalizeRootPath(f.getAbsolutePath());
+                ensureRootNotLoaded(session, requestedRootPath);
+                ensureRootNotRepeated(requestedRootPaths, requestedRootPath);
+                requestedRootPaths.add(requestedRootPath);
+            }
             for (File f : files) {
                 if (f == null) continue;
                 if (f.isFile()) {
@@ -52,6 +60,23 @@ public final class DefaultMcpWorkspaceService implements McpWorkspaceService {
             }
         } finally {
             session.unlock();
+        }
+    }
+
+    private void ensureRootNotLoaded(McpSessionState session, String requestedRootPath) {
+        for (WzObject root : session.getRoots()) {
+            String loadedRootPath = NodePathResolver.rootPathOf(root);
+            if (NodePathResolver.sameRootPath(loadedRootPath, requestedRootPath)) {
+                throw new McpException("文件已加载，禁止重复加载: " + requestedRootPath);
+            }
+        }
+    }
+
+    private void ensureRootNotRepeated(List<String> requestedRootPaths, String requestedRootPath) {
+        for (String existingPath : requestedRootPaths) {
+            if (NodePathResolver.sameRootPath(existingPath, requestedRootPath)) {
+                throw new McpException("同一次请求中存在重复加载路径: " + requestedRootPath);
+            }
         }
     }
 
@@ -106,6 +131,20 @@ public final class DefaultMcpWorkspaceService implements McpWorkspaceService {
         wzImageFile.setTempChanged(true);
         session.getRoots().add(wzImageFile);
         return NodeSummary.from(wzImageFile);
+    }
+
+    @Override
+    public List<NodeSummary> listLoadedRoots(McpSessionState session) {
+        session.lock();
+        try {
+            List<NodeSummary> result = new ArrayList<>(session.getRoots().size());
+            for (WzObject root : session.getRoots()) {
+                result.add(NodeSummary.from(root));
+            }
+            return result;
+        } finally {
+            session.unlock();
+        }
     }
 
     @Override

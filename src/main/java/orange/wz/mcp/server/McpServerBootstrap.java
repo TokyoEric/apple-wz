@@ -46,6 +46,7 @@ public final class McpServerBootstrap {
 
     private void registerBuiltInTools() {
         toolRegistry.register(new LoadFilesTool(sessionManager, workspaceService));
+        toolRegistry.register(new ListLoadedRootsTool(sessionManager, workspaceService));
         toolRegistry.register(new UnloadNodeTool(sessionManager, workspaceService));
         toolRegistry.register(new UnloadAllTool(sessionManager, workspaceService));
         toolRegistry.register(new CreateWzFileTool(sessionManager, workspaceService));
