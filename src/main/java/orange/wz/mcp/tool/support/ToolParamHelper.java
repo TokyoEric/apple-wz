@@ -1,5 +1,6 @@
 package orange.wz.mcp.tool.support;
 
+import orange.wz.mcp.dto.NodeReference;
 import orange.wz.mcp.support.McpException;
 import orange.wz.provider.tools.wzkey.WzKey;
 
@@ -65,6 +66,32 @@ public final class ToolParamHelper {
             return result;
         }
         return List.of(String.valueOf(value));
+    }
+
+    public static NodeReference getNodeReference(Map<String, Object> params) {
+        return getNodeReference(params, "rootPath", "nodePath");
+    }
+
+    public static NodeReference getNodeReference(Map<String, Object> params, String rootKey, String nodeKey) {
+        String rootPath = requireString(params, rootKey);
+        String nodePath = getString(params, nodeKey, "");
+        return new NodeReference(rootPath, nodePath);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static List<NodeReference> getNodeReferenceList(Map<String, Object> params, String key) {
+        Object value = params.get(key);
+        if (!(value instanceof List<?> list) || list.isEmpty()) {
+            throw new McpException("Parameter must be a non-empty array: " + key);
+        }
+        List<NodeReference> result = new ArrayList<>();
+        for (Object item : list) {
+            if (!(item instanceof Map<?, ?> map)) {
+                throw new McpException("Node reference must be an object in: " + key);
+            }
+            result.add(getNodeReference((Map<String, Object>) map));
+        }
+        return result;
     }
 
     public static List<File> getCanonicalLoadFiles(Map<String, Object> params, String key) {

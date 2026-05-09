@@ -3,6 +3,7 @@ package orange.wz.mcp.ui;
 import orange.wz.gui.MainFrame;
 import orange.wz.gui.component.panel.EditPane;
 import orange.wz.mcp.dto.NodeDetail;
+import orange.wz.mcp.dto.NodeReference;
 import orange.wz.mcp.dto.NodeSummary;
 import orange.wz.mcp.session.McpSessionState;
 import orange.wz.provider.WzObject;
@@ -82,23 +83,37 @@ public final class McpUiBridge {
                 case "load_files", "create_wz_file", "create_img_file" -> syncAllRoots(editPane, arguments);
                 case "unload_all" -> editPane.unloadAll();
                 case "unload_node", "delete_node" -> {
-                    removeNode(editPane, (String) arguments.get("path"));
-                    focusParent(editPane, (String) arguments.get("path"));
+                    NodeReference reference = nodeReference(arguments);
+                    removeNode(editPane, reference);
+                    focusParent(editPane, reference);
                 }
                 case "create_child_node" -> {
-                    insertChild(editPane, extractNode(result), (String) arguments.get("parentPath"));
-                    focusPath(editPane, extractNodePath(result));
+                    NodeReference parent = nodeReference(arguments);
+                    insertChild(editPane, extractNode(result), parent);
+                    focusNode(editPane, extractNode(result));
                 }
                 case "paste_nodes" -> {
-                    insertPasted(editPane, (List<Object>) result.get("pasted"), (String) arguments.get("targetPath"));
+                    insertPasted(editPane, (List<Object>) result.get("pasted"), nodeReference(arguments));
                     focusFirstPasted(editPane, result);
                 }
-                case "find_node", "search_node" -> focusPath(editPane, extractNodePath(result));
-                case "get_node_detail" -> focusPath(editPane, extractNodePath(result) != null ? extractNodePath(result) : stringArg(arguments, "path"));
-                case "list_children" -> focusPath(editPane, stringArg(arguments, "path"));
+                case "find_node", "search_node" -> focusNode(editPane, extractNode(result));
+                case "get_node_detail" -> {
+                    NodeSummary node = extractNode(result);
+                    if (node != null) {
+                        focusNode(editPane, node);
+                    } else {
+                        focusReference(editPane, nodeReference(arguments));
+                    }
+                }
+                case "list_children" -> focusReference(editPane, nodeReference(arguments));
                 case "batch_update_nodes", "mutate_nodes" -> focusFirstUpdated(editPane, result);
                 case "query_nodes" -> focusFirstNodeFromResults(editPane, result);
-                case "save_node", "save_as" -> editPane.reloadFilePreservingState(stringArg(arguments, "path"));
+                case "save_node", "save_as" -> {
+                    NodeReference reference = nodeReference(arguments);
+                    if (reference != null) {
+                        editPane.reloadFilePreservingStateByRootPath(reference.rootPath());
+                    }
+                }
                 default -> {
                 }
             }
@@ -121,67 +136,67 @@ public final class McpUiBridge {
         }
     }
 
-    private void removeNode(EditPane editPane, String path) {
-        if (path == null) return;
-        editPane.ensureRootNodeParsed(path);
-        DefaultMutableTreeNode node = editPane.findTreeNodeByPath(path);
+    private void removeNode(EditPane editPane, NodeReference reference) {
+        if (reference == null) {
+            return;
+        }
+        editPane.ensureRootNodeParsedByRootPath(reference.rootPath());
+        DefaultMutableTreeNode node = editPane.findTreeNodeByReference(reference.rootPath(), reference.nodePath());
         if (node != null) {
             editPane.removeNodeFromTree(node);
             editPane.resetValueForm();
         }
     }
 
-    private void insertChild(EditPane editPane, NodeSummary nodeSummary, String parentPath) {
-        if (nodeSummary == null || parentPath == null) {
+    private void insertChild(EditPane editPane, NodeSummary nodeSummary, NodeReference parent) {
+        if (nodeSummary == null || parent == null) {
             return;
         }
-        editPane.ensureRootNodeParsed(parentPath);
-        DefaultMutableTreeNode parentNode = editPane.findTreeNodeByPath(parentPath);
+        editPane.ensureRootNodeParsedByRootPath(parent.rootPath());
+        DefaultMutableTreeNode parentNode = editPane.findTreeNodeByReference(parent.rootPath(), parent.nodePath());
         if (parentNode == null) {
             return;
         }
         WzObject parentObj = (WzObject) parentNode.getUserObject();
         WzObject childObj = findChildObject(parentObj, nodeSummary.name());
-        if (childObj != null && editPane.findTreeNodeByPath(nodeSummary.path()) == null) {
+        if (childObj != null && editPane.findTreeNodeByReference(nodeSummary.rootPath(), nodeSummary.nodePath()) == null) {
             editPane.insertNodeToTree(parentNode, childObj, true);
         }
     }
 
-    private void insertPasted(EditPane editPane, List<Object> pastedItems, String targetPath) {
-        if (pastedItems == null || targetPath == null) {
+    private void insertPasted(EditPane editPane, List<Object> pastedItems, NodeReference target) {
+        if (pastedItems == null || target == null) {
             return;
         }
         for (Object item : pastedItems) {
-            if (item instanceof NodeSummary nodeSummary) {
-                insertChild(editPane, nodeSummary, targetPath);
-                continue;
-            }
-            if (item instanceof Map<?, ?> map) {
-                Object name = map.get("name");
-                Object path = map.get("path");
-                if (name instanceof String n && path instanceof String p) {
-                    insertChild(editPane, new NodeSummary(n, p, null), targetPath);
-                }
+            NodeSummary nodeSummary = item instanceof NodeSummary summary ? summary : nodeSummary(item);
+            if (nodeSummary != null) {
+                insertChild(editPane, nodeSummary, target);
             }
         }
     }
 
-    private void focusPath(EditPane editPane, String path) {
-        if (path == null || path.isBlank()) {
+    private void focusNode(EditPane editPane, NodeSummary node) {
+        if (node == null) {
             return;
         }
-        editPane.focusNodeByPath(path);
+        editPane.focusNodeByReference(node.rootPath(), node.nodePath());
     }
 
-    private void focusParent(EditPane editPane, String path) {
-        if (path == null) {
+    private void focusReference(EditPane editPane, NodeReference reference) {
+        if (reference == null) {
             return;
         }
-        int index = path.lastIndexOf('/');
-        if (index <= 0) {
+        editPane.focusNodeByReference(reference.rootPath(), reference.nodePath());
+    }
+
+    private void focusParent(EditPane editPane, NodeReference reference) {
+        if (reference == null || reference.nodePath().isBlank()) {
             return;
         }
-        focusPath(editPane, path.substring(0, index));
+        int index = reference.nodePath().lastIndexOf('/');
+        String parentNodePath = index < 0 ? "" : reference.nodePath().substring(0, index);
+        focusReference(editPane, new NodeReference(reference.rootPath(), parentNodePath));
     }
 
     private NodeSummary extractNode(Map<String, Object> result) {
@@ -189,12 +204,9 @@ public final class McpUiBridge {
         if (raw instanceof NodeSummary nodeSummary) {
             return nodeSummary;
         }
-        if (raw instanceof Map<?, ?> map) {
-            Object name = map.get("name");
-            Object path = map.get("path");
-            if (name instanceof String n && path instanceof String p) {
-                return new NodeSummary(n, p, null);
-            }
+        NodeSummary mapped = nodeSummary(raw);
+        if (mapped != null) {
+            return mapped;
         }
         Object detail = result.get("detail");
         if (detail instanceof NodeDetail nodeDetail) {
@@ -205,20 +217,22 @@ public final class McpUiBridge {
             if (rawNode instanceof NodeSummary nodeSummary) {
                 return nodeSummary;
             }
-            if (rawNode instanceof Map<?, ?> nodeMap) {
-                Object name = nodeMap.get("name");
-                Object path = nodeMap.get("path");
-                if (name instanceof String n && path instanceof String p) {
-                    return new NodeSummary(n, p, null);
-                }
-            }
+            return nodeSummary(rawNode);
         }
         return null;
     }
 
-    private String extractNodePath(Map<String, Object> result) {
-        NodeSummary node = extractNode(result);
-        return node == null ? null : node.path();
+    private NodeSummary nodeSummary(Object raw) {
+        if (!(raw instanceof Map<?, ?> map)) {
+            return null;
+        }
+        Object name = map.get("name");
+        Object rootPath = map.get("rootPath");
+        Object nodePath = map.get("nodePath");
+        if (name instanceof String n && rootPath instanceof String r) {
+            return new NodeSummary(n, r, nodePath instanceof String p ? p : "", null);
+        }
+        return null;
     }
 
     private String successMessage(String toolName, Map<String, Object> result) {
@@ -245,7 +259,6 @@ public final class McpUiBridge {
         };
     }
 
-    @SuppressWarnings("unchecked")
     private void focusFirstNodeFromResults(EditPane editPane, Map<String, Object> result) {
         Object rawResults = result.get("results");
         if (!(rawResults instanceof List<?> results)) {
@@ -261,21 +274,17 @@ public final class McpUiBridge {
             }
             Object first = matches.get(0);
             if (first instanceof NodeSummary nodeSummary) {
-                focusPath(editPane, nodeSummary.path());
+                focusNode(editPane, nodeSummary);
                 return;
             }
-            if (first instanceof Map<?, ?> nodeMap) {
-                Object name = nodeMap.get("name");
-                Object path = nodeMap.get("path");
-                if (name instanceof String n && path instanceof String p) {
-                    focusPath(editPane, new NodeSummary(n, p, null).path());
-                    return;
-                }
+            NodeSummary nodeSummary = nodeSummary(first);
+            if (nodeSummary != null) {
+                focusNode(editPane, nodeSummary);
+                return;
             }
         }
     }
 
-    @SuppressWarnings("unchecked")
     private void focusFirstUpdated(EditPane editPane, Map<String, Object> result) {
         Object rawResults = result.get("results");
         if (!(rawResults instanceof List<?> results)) {
@@ -287,18 +296,22 @@ public final class McpUiBridge {
             }
             Object rawNode = map.get("node");
             if (rawNode instanceof NodeSummary nodeSummary) {
-                focusPath(editPane, nodeSummary.path());
+                focusNode(editPane, nodeSummary);
                 return;
             }
-            Object path = map.get("path");
-            if (path instanceof String p) {
-                focusPath(editPane, p);
+            NodeSummary mapped = nodeSummary(rawNode);
+            if (mapped != null) {
+                focusNode(editPane, mapped);
+                return;
+            }
+            NodeReference reference = nodeReference(map);
+            if (reference != null) {
+                focusReference(editPane, reference);
                 return;
             }
         }
     }
 
-    @SuppressWarnings("unchecked")
     private void focusFirstPasted(EditPane editPane, Map<String, Object> result) {
         Object rawPasted = result.get("pasted");
         if (!(rawPasted instanceof List<?> pasted) || pasted.isEmpty()) {
@@ -306,14 +319,12 @@ public final class McpUiBridge {
         }
         Object first = pasted.get(0);
         if (first instanceof NodeSummary nodeSummary) {
-            focusPath(editPane, nodeSummary.path());
+            focusNode(editPane, nodeSummary);
             return;
         }
-        if (first instanceof Map<?, ?> map) {
-            Object path = map.get("path");
-            if (path instanceof String p) {
-                focusPath(editPane, p);
-            }
+        NodeSummary mapped = nodeSummary(first);
+        if (mapped != null) {
+            focusNode(editPane, mapped);
         }
     }
 
@@ -335,60 +346,43 @@ public final class McpUiBridge {
         return null;
     }
 
-    @SuppressWarnings("unchecked")
     private void prepareNodeTargets(EditPane editPane, Map<String, Object> arguments) {
-        Set<String> paths = new LinkedHashSet<>();
-        collectPaths(arguments, paths);
-        for (String path : paths) {
-            editPane.ensureRootNodeParsed(path);
+        Set<NodeReference> references = new LinkedHashSet<>();
+        collectNodeReferences(arguments, references);
+        for (NodeReference reference : references) {
+            editPane.ensureRootNodeParsedByRootPath(reference.rootPath());
         }
     }
 
     @SuppressWarnings("unchecked")
-    private void collectPaths(Map<String, Object> source, Set<String> collector) {
-        if (source == null) {
+    private void collectNodeReferences(Object source, Set<NodeReference> collector) {
+        if (source instanceof Map<?, ?> map) {
+            NodeReference reference = nodeReference(map);
+            if (reference != null) {
+                collector.add(reference);
+            }
+            for (Object value : map.values()) {
+                collectNodeReferences(value, collector);
+            }
             return;
         }
-        addPath(collector, source.get("path"));
-        addPath(collector, source.get("startPath"));
-        addPath(collector, source.get("parentPath"));
-        addPath(collector, source.get("targetPath"));
-
-        Object rawPaths = source.get("paths");
-        if (rawPaths instanceof List<?> paths) {
-            for (Object item : paths) {
-                addPath(collector, item);
-            }
-        }
-
-        Object rawQueries = source.get("queries");
-        if (rawQueries instanceof List<?> queries) {
-            for (Object query : queries) {
-                if (query instanceof Map<?, ?> map) {
-                    collectPaths((Map<String, Object>) map, collector);
-                }
-            }
-        }
-
-        Object rawOperations = source.get("operations");
-        if (rawOperations instanceof List<?> operations) {
-            for (Object operation : operations) {
-                if (operation instanceof Map<?, ?> map) {
-                    collectPaths((Map<String, Object>) map, collector);
-                }
+        if (source instanceof List<?> list) {
+            for (Object item : list) {
+                collectNodeReferences(item, collector);
             }
         }
     }
 
-    private void addPath(Set<String> collector, Object value) {
-        if (value instanceof String path && !path.isBlank()) {
-            collector.add(path);
+    private NodeReference nodeReference(Map<?, ?> source) {
+        if (source == null) {
+            return null;
         }
-    }
-
-    private String stringArg(Map<String, Object> arguments, String key) {
-        Object value = arguments.get(key);
-        return value instanceof String text ? text : null;
+        Object rootPath = source.get("rootPath");
+        if (!(rootPath instanceof String r) || r.isBlank()) {
+            return null;
+        }
+        Object nodePath = source.get("nodePath");
+        return new NodeReference(r, nodePath instanceof String p ? p : "");
     }
 
     private boolean isAvailable() {

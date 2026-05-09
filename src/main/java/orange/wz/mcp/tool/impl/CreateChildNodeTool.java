@@ -23,7 +23,7 @@ public final class CreateChildNodeTool extends BaseSessionTool {
     @Override
     public Map<String, Object> invoke(Map<String, Object> params) {
         var session = session(params);
-        String parentPath = ToolParamHelper.requireString(params, "parentPath");
+        var parent = ToolParamHelper.getNodeReference(params);
         String type = ToolParamHelper.requireString(params, "type");
         String nodeName = ToolParamHelper.requireString(params, "name");
         String value = ToolParamHelper.getString(params, "value", null);
@@ -39,7 +39,7 @@ public final class CreateChildNodeTool extends BaseSessionTool {
                 "node",
                 service.createChildNode(
                         session,
-                        parentPath,
+                        parent,
                         type,
                         nodeName,
                         value,

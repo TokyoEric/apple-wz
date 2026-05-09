@@ -24,9 +24,8 @@ public final class FindNodeTool extends BaseSessionTool {
     @Override
     public Map<String, Object> invoke(Map<String, Object> params) {
         var session = session(params);
-        String path = ToolParamHelper.requireString(params, "path");
         boolean autoParse = ToolParamHelper.getBoolean(params, "autoParse", true);
-        var node = service.findByPath(session, path, autoParse);
+        var node = service.findNode(session, ToolParamHelper.getNodeReference(params), autoParse);
         return Map.of("node", NodeSummary.from(node));
     }
 }

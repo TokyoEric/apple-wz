@@ -1,6 +1,7 @@
 package orange.wz.mcp.service.impl;
 
 import orange.wz.mcp.dto.NodeDetail;
+import orange.wz.mcp.dto.NodeReference;
 import orange.wz.mcp.dto.NodeSummary;
 import orange.wz.mcp.dto.OverwriteStrategy;
 import orange.wz.mcp.resolve.NodePathResolver;
@@ -55,10 +56,10 @@ public final class DefaultMcpWorkspaceService implements McpWorkspaceService {
     }
 
     @Override
-    public void unloadByPath(McpSessionState session, String path) {
+    public void unloadNode(McpSessionState session, NodeReference reference) {
         session.lock();
         try {
-            WzObject obj = resolver.resolveFromRoots(session.getRoots(), path, false);
+            WzObject obj = resolver.resolveFromRoots(session.getRoots(), reference, false);
             if (obj.getParent() == null) {
                 session.getRoots().remove(obj);
                 return;
@@ -108,13 +109,13 @@ public final class DefaultMcpWorkspaceService implements McpWorkspaceService {
     }
 
     @Override
-    public WzObject findByPath(McpSessionState session, String path, boolean autoParse) {
-        return resolver.resolveFromRoots(session.getRoots(), path, autoParse);
+    public WzObject findNode(McpSessionState session, NodeReference reference, boolean autoParse) {
+        return resolver.resolveFromRoots(session.getRoots(), reference, autoParse);
     }
 
     @Override
-    public List<NodeSummary> listChildren(McpSessionState session, String path, boolean autoParse) {
-        WzObject parent = resolver.resolveFromRoots(session.getRoots(), path, autoParse);
+    public List<NodeSummary> listChildren(McpSessionState session, NodeReference reference, boolean autoParse) {
+        WzObject parent = resolver.resolveFromRoots(session.getRoots(), reference, autoParse);
         List<WzObject> children = getChildren(parent);
         List<NodeSummary> result = new ArrayList<>();
         for (WzObject child : children) {
@@ -124,13 +125,13 @@ public final class DefaultMcpWorkspaceService implements McpWorkspaceService {
     }
 
     @Override
-    public void copyByPaths(McpSessionState session, List<String> paths, boolean autoParse) {
-        if (paths == null || paths.isEmpty()) return;
+    public void copyNodes(McpSessionState session, List<NodeReference> sources, boolean autoParse) {
+        if (sources == null || sources.isEmpty()) return;
         session.lock();
         try {
             session.getClipboard().clear();
-            for (String path : paths) {
-                WzObject obj = resolver.resolveFromRoots(session.getRoots(), path, autoParse);
+            for (NodeReference source : sources) {
+                WzObject obj = resolver.resolveFromRoots(session.getRoots(), source, autoParse);
                 session.getClipboard().add(obj.deepClone(null));
             }
         } finally {
@@ -139,10 +140,10 @@ public final class DefaultMcpWorkspaceService implements McpWorkspaceService {
     }
 
     @Override
-    public List<NodeSummary> pasteToPath(McpSessionState session, String targetPath, OverwriteStrategy strategy, boolean autoParse) {
+    public List<NodeSummary> pasteToNode(McpSessionState session, NodeReference targetReference, OverwriteStrategy strategy, boolean autoParse) {
         session.lock();
         try {
-            WzObject target = resolver.resolveFromRoots(session.getRoots(), targetPath, autoParse);
+            WzObject target = resolver.resolveFromRoots(session.getRoots(), targetReference, autoParse);
             if (session.getClipboard().isEmpty()) {
                 throw new McpException("剪贴板为空");
             }
@@ -178,11 +179,11 @@ public final class DefaultMcpWorkspaceService implements McpWorkspaceService {
     }
 
     @Override
-    public NodeSummary createChildNode(McpSessionState session, String parentPath, String type, String name, String value, Integer x, Integer y, String base64Png, String base64Mp3, String pngFormat, boolean autoParse) {
+    public NodeSummary createChildNode(McpSessionState session, NodeReference parentReference, String type, String name, String value, Integer x, Integer y, String base64Png, String base64Mp3, String pngFormat, boolean autoParse) {
         if (name == null || name.isBlank()) throw new McpException("节点名称不能为空");
         session.lock();
         try {
-            WzObject parent = resolver.resolveFromRoots(session.getRoots(), parentPath, autoParse);
+            WzObject parent = resolver.resolveFromRoots(session.getRoots(), parentReference, autoParse);
             WzObject child = createNodeByType(parent, type, name, value, x, y, base64Png, base64Mp3, pngFormat);
             addChild(parent, child);
             child.setTempChanged(true);
@@ -193,14 +194,14 @@ public final class DefaultMcpWorkspaceService implements McpWorkspaceService {
     }
 
     @Override
-    public void deleteNode(McpSessionState session, String path, boolean autoParse) {
-        unloadByPath(session, path);
+    public void deleteNode(McpSessionState session, NodeReference reference, boolean autoParse) {
+        unloadNode(session, reference);
     }
 
     @Override
-    public List<NodeSummary> searchNodeByName(McpSessionState session, String startPath, String keyword, boolean autoParse) {
+    public List<NodeSummary> searchNodeByName(McpSessionState session, NodeReference start, String keyword, boolean autoParse) {
         if (keyword == null || keyword.isBlank()) throw new McpException("keyword 不能为空");
-        WzObject root = resolver.resolveFromRoots(session.getRoots(), startPath, autoParse);
+        WzObject root = resolver.resolveFromRoots(session.getRoots(), start, autoParse);
         List<NodeSummary> result = new ArrayList<>();
         String key = keyword.toLowerCase(Locale.ROOT);
         walkByName(root, key, autoParse, result);
@@ -208,9 +209,9 @@ public final class DefaultMcpWorkspaceService implements McpWorkspaceService {
     }
 
     @Override
-    public List<Map<String, Object>> searchNodeByValue(McpSessionState session, String startPath, String keyword, boolean autoParse) {
+    public List<Map<String, Object>> searchNodeByValue(McpSessionState session, NodeReference start, String keyword, boolean autoParse) {
         if (keyword == null || keyword.isBlank()) throw new McpException("keyword 不能为空");
-        WzObject root = resolver.resolveFromRoots(session.getRoots(), startPath, autoParse);
+        WzObject root = resolver.resolveFromRoots(session.getRoots(), start, autoParse);
         List<Map<String, Object>> result = new ArrayList<>();
         String key = keyword.toLowerCase(Locale.ROOT);
         walkByValue(root, key, autoParse, result);
@@ -218,14 +219,14 @@ public final class DefaultMcpWorkspaceService implements McpWorkspaceService {
     }
 
     @Override
-    public NodeDetail getNodeDetail(McpSessionState session, String path, boolean autoParse) {
-        WzObject obj = resolver.resolveFromRoots(session.getRoots(), path, autoParse);
+    public NodeDetail getNodeDetail(McpSessionState session, NodeReference reference, boolean autoParse) {
+        WzObject obj = resolver.resolveFromRoots(session.getRoots(), reference, autoParse);
         return new NodeDetail(NodeSummary.from(obj), extractValue(obj));
     }
 
     @Override
-    public Map<String, Object> getNodeTreeJson(McpSessionState session, String path, boolean autoParse, int maxDepth) {
-        WzObject obj = resolver.resolveFromRoots(session.getRoots(), path, autoParse);
+    public Map<String, Object> getNodeTreeJson(McpSessionState session, NodeReference reference, boolean autoParse, int maxDepth) {
+        WzObject obj = resolver.resolveFromRoots(session.getRoots(), reference, autoParse);
         return serializeTree(obj, autoParse, maxDepth <= 0 ? Integer.MAX_VALUE : maxDepth, 0);
     }
 
@@ -250,12 +251,13 @@ public final class DefaultMcpWorkspaceService implements McpWorkspaceService {
         session.lock();
         try {
             for (Map<String, Object> operation : operations) {
-                String path = stringValue(operation.get("path"));
+                NodeReference reference = nodeReference(operation);
                 boolean autoParse = booleanValue(operation.get("autoParse"), true);
-                WzObject obj = resolver.resolveFromRoots(session.getRoots(), path, autoParse);
+                WzObject obj = resolver.resolveFromRoots(session.getRoots(), reference, autoParse);
                 String op = updateNode(obj, operation);
                 results.add(Map.of(
-                        "path", obj.getPath(),
+                        "rootPath", NodePathResolver.rootPathOf(obj),
+                        "nodePath", NodePathResolver.nodePathOf(obj),
                         "node", NodeSummary.from(obj),
                         "op", op,
                         "updated", true
@@ -268,17 +270,17 @@ public final class DefaultMcpWorkspaceService implements McpWorkspaceService {
     }
 
     @Override
-    public void saveNode(McpSessionState session, String path, boolean autoParse) {
-        WzObject obj = resolver.resolveFromRoots(session.getRoots(), path, autoParse);
+    public void saveNode(McpSessionState session, NodeReference reference, boolean autoParse) {
+        WzObject obj = resolver.resolveFromRoots(session.getRoots(), reference, autoParse);
         WzSavableFile file = toSavableFile(obj);
         if (file == null) throw new McpException("该节点不支持保存: " + obj.getClass().getSimpleName());
         if (!file.save()) throw new McpException("保存失败: " + file.getName());
     }
 
     @Override
-    public void saveNodeAs(McpSessionState session, String path, String filePath, boolean autoParse) {
+    public void saveNodeAs(McpSessionState session, NodeReference reference, String filePath, boolean autoParse) {
         if (filePath == null || filePath.isBlank()) throw new McpException("filePath 不能为空");
-        WzObject obj = resolver.resolveFromRoots(session.getRoots(), path, autoParse);
+        WzObject obj = resolver.resolveFromRoots(session.getRoots(), reference, autoParse);
         WzSavableFile file = toSavableFile(obj);
         if (file == null) throw new McpException("该节点不支持另存为: " + obj.getClass().getSimpleName());
         file.setFilePath(filePath);
@@ -469,7 +471,8 @@ public final class DefaultMcpWorkspaceService implements McpWorkspaceService {
     private Map<String, Object> buildValueMatch(WzObject obj, String keyword) {
         Map<String, Object> match = new HashMap<>();
         match.put("name", obj.getName());
-        match.put("path", obj.getPath());
+        match.put("rootPath", NodePathResolver.rootPathOf(obj));
+        match.put("nodePath", NodePathResolver.nodePathOf(obj));
         match.put("type", obj.getType().name());
         match.put("matchedIn", "value");
 
@@ -549,7 +552,8 @@ public final class DefaultMcpWorkspaceService implements McpWorkspaceService {
     private Map<String, Object> extractValue(WzObject obj) {
         Map<String, Object> result = new HashMap<>();
         result.put("name", obj.getName());
-        result.put("path", obj.getPath());
+        result.put("rootPath", NodePathResolver.rootPathOf(obj));
+        result.put("nodePath", NodePathResolver.nodePathOf(obj));
         result.put("type", obj.getType().name());
 
         switch (obj) {
@@ -917,11 +921,12 @@ public final class DefaultMcpWorkspaceService implements McpWorkspaceService {
     }
 
     private Map<String, Object> executeFindByPath(McpSessionState session, Map<String, Object> query, boolean autoParse, String op) {
-        String path = stringValue(firstPresent(query, "path", "startPath"));
-        WzObject obj = resolver.resolveFromRoots(session.getRoots(), path, autoParse);
+        NodeReference reference = nodeReference(query);
+        WzObject obj = resolver.resolveFromRoots(session.getRoots(), reference, autoParse);
         Map<String, Object> result = new HashMap<>();
         result.put("op", op);
-        result.put("path", path);
+        result.put("rootPath", reference.rootPath());
+        result.put("nodePath", reference.nodePath());
         result.put("matches", List.of(NodeSummary.from(obj)));
         if (booleanValue(query.get("includeTree"), false)) {
             int maxDepth = integerValue(query.get("maxDepth")) == null ? 0 : integerValue(query.get("maxDepth"));
@@ -931,19 +936,20 @@ public final class DefaultMcpWorkspaceService implements McpWorkspaceService {
     }
 
     private Map<String, Object> executeSearchByKeyword(McpSessionState session, Map<String, Object> query, boolean autoParse, String op) {
-        String startPath = stringValue(firstPresent(query, "startPath", "path"));
+        NodeReference start = nodeReference(query);
         String keyword = stringValue(query.get("keyword"));
-        List<NodeSummary> matches = searchNodeByName(session, startPath, keyword, autoParse);
+        List<NodeSummary> matches = searchNodeByName(session, start, keyword, autoParse);
         Map<String, Object> result = new HashMap<>();
         result.put("op", op);
-        result.put("startPath", startPath);
+        result.put("rootPath", start.rootPath());
+        result.put("nodePath", start.nodePath());
         result.put("keyword", keyword);
         result.put("matches", matches);
         if (booleanValue(query.get("includeTree"), false) && !matches.isEmpty()) {
             int maxDepth = integerValue(query.get("maxDepth")) == null ? 0 : integerValue(query.get("maxDepth"));
             List<Map<String, Object>> trees = new ArrayList<>();
             for (NodeSummary match : matches) {
-                WzObject obj = resolver.resolveFromRoots(session.getRoots(), match.path(), autoParse);
+                WzObject obj = resolver.resolveFromRoots(session.getRoots(), new NodeReference(match.rootPath(), match.nodePath()), autoParse);
                 trees.add(serializeTree(obj, autoParse, maxDepth <= 0 ? Integer.MAX_VALUE : maxDepth, 0));
             }
             result.put("trees", trees);
@@ -952,23 +958,25 @@ public final class DefaultMcpWorkspaceService implements McpWorkspaceService {
     }
 
     private Map<String, Object> executeSearchByValue(McpSessionState session, Map<String, Object> query, boolean autoParse, String op) {
-        String startPath = stringValue(firstPresent(query, "startPath", "path"));
+        NodeReference start = nodeReference(query);
         String keyword = stringValue(query.get("keyword"));
-        List<Map<String, Object>> matches = searchNodeByValue(session, startPath, keyword, autoParse);
+        List<Map<String, Object>> matches = searchNodeByValue(session, start, keyword, autoParse);
         Map<String, Object> result = new HashMap<>();
         result.put("op", op);
-        result.put("startPath", startPath);
+        result.put("rootPath", start.rootPath());
+        result.put("nodePath", start.nodePath());
         result.put("keyword", keyword);
         result.put("matches", matches);
         if (booleanValue(query.get("includeTree"), false) && !matches.isEmpty()) {
             int maxDepth = integerValue(query.get("maxDepth")) == null ? 0 : integerValue(query.get("maxDepth"));
             List<Map<String, Object>> trees = new ArrayList<>();
             for (Map<String, Object> match : matches) {
-                Object path = match.get("path");
-                if (!(path instanceof String matchPath)) {
+                Object rootPath = match.get("rootPath");
+                if (!(rootPath instanceof String matchRootPath)) {
                     continue;
                 }
-                WzObject obj = resolver.resolveFromRoots(session.getRoots(), matchPath, autoParse);
+                String matchNodePath = optionalString(match.get("nodePath"));
+                WzObject obj = resolver.resolveFromRoots(session.getRoots(), new NodeReference(matchRootPath, matchNodePath), autoParse);
                 trees.add(serializeTree(obj, autoParse, maxDepth <= 0 ? Integer.MAX_VALUE : maxDepth, 0));
             }
             result.put("trees", trees);
@@ -977,14 +985,15 @@ public final class DefaultMcpWorkspaceService implements McpWorkspaceService {
     }
 
     private Map<String, Object> executeMatchType(McpSessionState session, Map<String, Object> query, boolean autoParse, String op) {
-        String startPath = stringValue(firstPresent(query, "startPath", "path"));
+        NodeReference start = nodeReference(query);
         String type = stringValue(query.get("type")).toUpperCase(Locale.ROOT);
-        WzObject root = resolver.resolveFromRoots(session.getRoots(), startPath, autoParse);
+        WzObject root = resolver.resolveFromRoots(session.getRoots(), start, autoParse);
         List<NodeSummary> matches = new ArrayList<>();
         walkByType(root, type, autoParse, matches);
         return Map.of(
                 "op", op,
-                "startPath", startPath,
+                "rootPath", start.rootPath(),
+                "nodePath", start.nodePath(),
                 "type", type,
                 "matches", matches
         );
@@ -1002,7 +1011,7 @@ public final class DefaultMcpWorkspaceService implements McpWorkspaceService {
     private String normalizeFindOp(String op, Map<String, Object> query) {
         if (op != null && !op.isBlank()) {
             return switch (op.trim().toLowerCase(Locale.ROOT)) {
-                case "find_by_path", "path" -> "find_by_path";
+                case "find_by_path" -> "find_by_path";
                 case "search_by_keyword", "keyword", "search" -> "search_by_keyword";
                 case "search_by_value", "value" -> "search_by_value";
                 case "match_type", "type" -> "match_type";
@@ -1019,15 +1028,14 @@ public final class DefaultMcpWorkspaceService implements McpWorkspaceService {
         if (query.containsKey("type")) {
             return "match_type";
         }
-        if (query.containsKey("path") || query.containsKey("startPath")) {
+        if (query.containsKey("rootPath")) {
             return "find_by_path";
         }
         throw new McpException("batch_find_nodes 缺少 op");
     }
 
-    private Object firstPresent(Map<String, Object> query, String firstKey, String secondKey) {
-        Object first = query.get(firstKey);
-        return first != null ? first : query.get(secondKey);
+    private NodeReference nodeReference(Map<String, Object> source) {
+        return new NodeReference(stringValue(source.get("rootPath")), optionalString(source.get("nodePath")));
     }
 
     private void renameProperty(WzImageProperty prop, String newName) {

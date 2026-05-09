@@ -25,10 +25,10 @@ public final class PasteNodesTool extends BaseSessionTool {
     @Override
     public Map<String, Object> invoke(Map<String, Object> params) {
         var session = session(params);
-        String targetPath = ToolParamHelper.requireString(params, "targetPath");
+        var target = ToolParamHelper.getNodeReference(params);
         boolean autoParse = ToolParamHelper.getBoolean(params, "autoParse", true);
         String strategyText = ToolParamHelper.getString(params, "strategy", OverwriteStrategy.ERROR.name());
         OverwriteStrategy strategy = OverwriteStrategy.valueOf(strategyText.toUpperCase(Locale.ROOT));
-        return Map.of("pasted", service.pasteToPath(session, targetPath, strategy, autoParse));
+        return Map.of("pasted", service.pasteToNode(session, target, strategy, autoParse));
     }
 }

@@ -11,6 +11,7 @@ import orange.wz.gui.component.form.impl.*;
 import orange.wz.gui.component.menu.*;
 import orange.wz.gui.utils.*;
 import orange.wz.model.Pair;
+import orange.wz.mcp.resolve.NodePathResolver;
 import orange.wz.provider.*;
 import orange.wz.provider.properties.*;
 import orange.wz.provider.tools.*;
@@ -30,6 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static orange.wz.gui.Icons.*;
@@ -37,6 +39,8 @@ import static orange.wz.gui.Icons.*;
 @Getter
 @Slf4j
 public final class EditPane extends JSplitPane {
+    private static final Pattern INDEXED_NODE_SEGMENT = Pattern.compile("^(.*)\\[(\\d+)]$");
+
     private JTree tree;
     private DefaultMutableTreeNode treeRoot;
     private DefaultTreeModel treeModel;
@@ -934,6 +938,16 @@ public final class EditPane extends JSplitPane {
         navigateToPath(List.of(path.split("/")), true, false, true);
     }
 
+    public void focusNodeByReference(String rootPath, String nodePath) {
+        DefaultMutableTreeNode node = findTreeNodeByReference(rootPath, nodePath);
+        if (node == null) {
+            return;
+        }
+        TreePath treePath = new TreePath(node.getPath());
+        tree.setSelectionPath(treePath);
+        tree.scrollPathToVisible(treePath);
+    }
+
     /**
      * 搜索 node 的下一级，查找符合名称的节点
      *
@@ -963,8 +977,44 @@ public final class EditPane extends JSplitPane {
         return node;
     }
 
+    public DefaultMutableTreeNode findTreeNodeByReference(String rootPath, String nodePath) {
+        DefaultMutableTreeNode node = findRootTreeNodeByRootPath(rootPath);
+        if (node == null) {
+            return null;
+        }
+        ensureRootNodeParsed(node);
+        if (nodePath == null || nodePath.isBlank()) {
+            return node;
+        }
+        String[] paths = nodePath.split("/");
+        for (String item : paths) {
+            if (item.isBlank()) {
+                continue;
+            }
+            if (node.isLeaf()) {
+                waitForWorker(handleTreeDoubleClick(node));
+            } else {
+                tree.expandPath(new TreePath(node.getPath()));
+            }
+            node = findTreeNodeBySegment(node, item);
+            if (node == null) {
+                return null;
+            }
+        }
+        return node;
+    }
+
     public void ensureRootNodeParsed(String path) {
         DefaultMutableTreeNode rootNode = findRootTreeNode(path);
+        ensureRootNodeParsed(rootNode);
+    }
+
+    public void ensureRootNodeParsedByRootPath(String rootPath) {
+        DefaultMutableTreeNode rootNode = findRootTreeNodeByRootPath(rootPath);
+        ensureRootNodeParsed(rootNode);
+    }
+
+    private void ensureRootNodeParsed(DefaultMutableTreeNode rootNode) {
         if (rootNode == null || !rootNode.isLeaf()) {
             return;
         }
@@ -973,6 +1023,18 @@ public final class EditPane extends JSplitPane {
 
     public void reloadFilePreservingState(String path) {
         DefaultMutableTreeNode node = findRootTreeNode(path);
+        if (node == null) {
+            return;
+        }
+        WzKey key = extractNodeKey(node);
+        if (key == null) {
+            return;
+        }
+        reloadFilePreservingState(node, key);
+    }
+
+    public void reloadFilePreservingStateByRootPath(String rootPath) {
+        DefaultMutableTreeNode node = findRootTreeNodeByRootPath(rootPath);
         if (node == null) {
             return;
         }
@@ -1040,6 +1102,52 @@ public final class EditPane extends JSplitPane {
             return null;
         }
         return findTreeNodeByName(treeRoot, paths[0]);
+    }
+
+    private DefaultMutableTreeNode findRootTreeNodeByRootPath(String rootPath) {
+        if (rootPath == null || rootPath.isBlank()) {
+            return null;
+        }
+        for (int i = 0; i < treeRoot.getChildCount(); i++) {
+            DefaultMutableTreeNode child = (DefaultMutableTreeNode) treeRoot.getChildAt(i);
+            if (child.getUserObject() instanceof WzObject wzObject
+                    && NodePathResolver.sameRootPath(NodePathResolver.rootPathOf(wzObject), rootPath)) {
+                return child;
+            }
+        }
+        return null;
+    }
+
+    private DefaultMutableTreeNode findTreeNodeBySegment(DefaultMutableTreeNode parent, String segment) {
+        SegmentSelector selector = parseSegment(selectorText(segment));
+        int sameNameIndex = 0;
+        for (int j = 0; j < parent.getChildCount(); j++) {
+            DefaultMutableTreeNode child = (DefaultMutableTreeNode) parent.getChildAt(j);
+            if (!(child.getUserObject() instanceof WzObject wzObject)
+                    || !selector.name().equalsIgnoreCase(wzObject.getName())) {
+                continue;
+            }
+            if (selector.index() == null || selector.index() == sameNameIndex) {
+                return child;
+            }
+            sameNameIndex++;
+        }
+        return null;
+    }
+
+    private String selectorText(String segment) {
+        return segment == null ? "" : segment;
+    }
+
+    private SegmentSelector parseSegment(String segment) {
+        Matcher matcher = INDEXED_NODE_SEGMENT.matcher(segment);
+        if (!matcher.matches()) {
+            return new SegmentSelector(segment, null);
+        }
+        return new SegmentSelector(matcher.group(1), Integer.parseInt(matcher.group(2)));
+    }
+
+    private record SegmentSelector(String name, Integer index) {
     }
 
     private WzKey extractNodeKey(DefaultMutableTreeNode node) {

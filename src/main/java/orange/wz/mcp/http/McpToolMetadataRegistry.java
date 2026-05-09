@@ -16,9 +16,9 @@ public final class McpToolMetadataRegistry {
                         ),
                         List.of("paths", "key")
                 )),
-                new McpToolDescriptor("unload_node", "卸载指定路径的节点。", objectSchema(
-                        Map.of("path", stringSchema()),
-                        List.of("path")
+                new McpToolDescriptor("unload_node", "卸载指定节点。rootPath 为已加载根文件或目录路径，nodePath 为根内节点路径。", objectSchema(
+                        nodeReferenceProperties(),
+                        List.of("rootPath")
                 )),
                 new McpToolDescriptor("unload_all", "卸载当前会话中的全部已加载对象。", objectSchema(Map.of(), List.of())),
                 new McpToolDescriptor("create_wz_file", "创建新的 wz 文件根节点。", objectSchema(
@@ -38,78 +38,85 @@ public final class McpToolMetadataRegistry {
                 )),
                 new McpToolDescriptor("list_children", "列出指定节点的直接子节点。", objectSchema(
                         Map.of(
-                                "path", stringSchema(),
+                                "rootPath", stringSchema(),
+                                "nodePath", stringSchema(),
                                 "autoParse", booleanSchema()
                         ),
-                        List.of("path")
+                        List.of("rootPath")
                 )),
                 new McpToolDescriptor("find_node", "按路径查找单个节点。", objectSchema(
                         Map.of(
-                                "path", stringSchema(),
+                                "rootPath", stringSchema(),
+                                "nodePath", stringSchema(),
                                 "autoParse", booleanSchema()
                         ),
-                        List.of("path")
+                        List.of("rootPath")
                 )),
                 new McpToolDescriptor("search_node", "按关键字搜索节点名称；设置 searchIn=value 时搜索节点值。", objectSchema(
                         Map.of(
-                                "startPath", stringSchema(),
+                                "rootPath", stringSchema(),
+                                "nodePath", stringSchema(),
                                 "keyword", stringSchema(),
                                 "searchIn", stringSchema(),
                                 "autoParse", booleanSchema()
                         ),
-                        List.of("startPath", "keyword")
+                        List.of("rootPath", "keyword")
                 )),
                 new McpToolDescriptor("get_node_detail", "获取节点详情和值。", objectSchema(
                         Map.of(
-                                "path", stringSchema(),
+                                "rootPath", stringSchema(),
+                                "nodePath", stringSchema(),
                                 "autoParse", booleanSchema()
                         ),
-                        List.of("path")
+                        List.of("rootPath")
                 )),
                 new McpToolDescriptor("get_node_tree_json", "获取指定节点及其子节点的 JSON 树数据。", objectSchema(
                         Map.of(
-                                "path", stringSchema(),
+                                "rootPath", stringSchema(),
+                                "nodePath", stringSchema(),
                                 "autoParse", booleanSchema(),
                                 "maxDepth", numberSchema()
                         ),
-                        List.of("path")
+                        List.of("rootPath")
                 )),
                 new McpToolDescriptor("create_child_node", "在指定父节点下创建子节点。", objectSchema(
-                        Map.of(
-                                "parentPath", stringSchema(),
-                                "type", stringSchema(),
-                                "name", stringSchema(),
-                                "value", stringSchema(),
-                                "x", numberSchema(),
-                                "y", numberSchema(),
-                                "base64Png", stringSchema(),
-                                "base64Mp3", stringSchema(),
-                                "pngFormat", stringSchema(),
-                                "autoParse", booleanSchema()
+                        Map.ofEntries(
+                                Map.entry("rootPath", stringSchema()),
+                                Map.entry("nodePath", stringSchema()),
+                                Map.entry("type", stringSchema()),
+                                Map.entry("name", stringSchema()),
+                                Map.entry("value", stringSchema()),
+                                Map.entry("x", numberSchema()),
+                                Map.entry("y", numberSchema()),
+                                Map.entry("base64Png", stringSchema()),
+                                Map.entry("base64Mp3", stringSchema()),
+                                Map.entry("pngFormat", stringSchema()),
+                                Map.entry("autoParse", booleanSchema())
                         ),
-                        List.of("parentPath", "type", "name")
+                        List.of("rootPath", "type", "name")
                 )),
                 new McpToolDescriptor("delete_node", "删除指定路径的节点。", objectSchema(
                         Map.of(
-                                "path", stringSchema(),
+                                "rootPath", stringSchema(),
+                                "nodePath", stringSchema(),
                                 "autoParse", booleanSchema()
                         ),
-                        List.of("path")
+                        List.of("rootPath")
                 )),
                 new McpToolDescriptor("copy_nodes", "复制一个或多个节点到当前会话剪贴板。", objectSchema(
                         Map.of(
-                                "paths", arraySchema(stringSchema()),
+                                "sources", arraySchema(nodeReferenceSchema()),
                                 "autoParse", booleanSchema()
                         ),
-                        List.of("paths")
+                        List.of("sources")
                 )),
                 new McpToolDescriptor("batch_find_nodes", "批量执行节点查询，推荐使用 op 驱动模式。支持 find_by_path、search_by_keyword、search_by_value、match_type，可选 includeTree。", objectSchema(
                         Map.of(
                                 "queries", arraySchema(objectSchema(
                                         Map.of(
                                                 "op", stringSchema(),
-                                                "path", stringSchema(),
-                                                "startPath", stringSchema(),
+                                                "rootPath", stringSchema(),
+                                                "nodePath", stringSchema(),
                                                 "keyword", stringSchema(),
                                                 "searchIn", stringSchema(),
                                                 "type", stringSchema(),
@@ -127,8 +134,8 @@ public final class McpToolMetadataRegistry {
                                 Map.entry("queries", arraySchema(objectSchema(
                                         Map.of(
                                                 "op", stringSchema(),
-                                                "path", stringSchema(),
-                                                "startPath", stringSchema(),
+                                                "rootPath", stringSchema(),
+                                                "nodePath", stringSchema(),
                                                 "keyword", stringSchema(),
                                                 "searchIn", stringSchema(),
                                                 "type", stringSchema(),
@@ -139,8 +146,8 @@ public final class McpToolMetadataRegistry {
                                         List.of()
                                 ))),
                                 Map.entry("op", stringSchema()),
-                                Map.entry("path", stringSchema()),
-                                Map.entry("startPath", stringSchema()),
+                                Map.entry("rootPath", stringSchema()),
+                                Map.entry("nodePath", stringSchema()),
                                 Map.entry("keyword", stringSchema()),
                                 Map.entry("searchIn", stringSchema()),
                                 Map.entry("type", stringSchema()),
@@ -152,28 +159,30 @@ public final class McpToolMetadataRegistry {
                 )),
                 new McpToolDescriptor("paste_nodes", "将会话剪贴板内容粘贴到目标节点。", objectSchema(
                         Map.of(
-                                "targetPath", stringSchema(),
+                                "rootPath", stringSchema(),
+                                "nodePath", stringSchema(),
                                 "strategy", stringSchema(),
                                 "autoParse", booleanSchema()
                         ),
-                        List.of("targetPath")
+                        List.of("rootPath")
                 )),
                 new McpToolDescriptor("batch_update_nodes", "批量修改节点，推荐使用 op 驱动模式。支持 rename、set_value、set_vector、set_png、set_sound。", objectSchema(
                         Map.of(
                                 "operations", arraySchema(objectSchema(
-                                        Map.of(
-                                                "path", stringSchema(),
-                                                "op", stringSchema(),
-                                                "autoParse", booleanSchema(),
-                                                "name", stringSchema(),
-                                                "value", stringSchema(),
-                                                "x", numberSchema(),
-                                                "y", numberSchema(),
-                                                "base64Png", stringSchema(),
-                                                "base64Mp3", stringSchema(),
-                                                "pngFormat", stringSchema()
+                                        Map.ofEntries(
+                                                Map.entry("rootPath", stringSchema()),
+                                                Map.entry("nodePath", stringSchema()),
+                                                Map.entry("op", stringSchema()),
+                                                Map.entry("autoParse", booleanSchema()),
+                                                Map.entry("name", stringSchema()),
+                                                Map.entry("value", stringSchema()),
+                                                Map.entry("x", numberSchema()),
+                                                Map.entry("y", numberSchema()),
+                                                Map.entry("base64Png", stringSchema()),
+                                                Map.entry("base64Mp3", stringSchema()),
+                                                Map.entry("pngFormat", stringSchema())
                                         ),
-                                        List.of("path")
+                                        List.of("rootPath")
                                 ))
                         ),
                         List.of("operations")
@@ -181,21 +190,23 @@ public final class McpToolMetadataRegistry {
                 new McpToolDescriptor("mutate_nodes", "统一节点修改入口。支持单次直接修改，也支持传 operations 批量修改。推荐 op: rename、set_value、set_vector、set_png、set_sound。", objectSchema(
                         Map.ofEntries(
                                 Map.entry("operations", arraySchema(objectSchema(
-                                        Map.of(
-                                                "path", stringSchema(),
-                                                "op", stringSchema(),
-                                                "autoParse", booleanSchema(),
-                                                "name", stringSchema(),
-                                                "value", stringSchema(),
-                                                "x", numberSchema(),
-                                                "y", numberSchema(),
-                                                "base64Png", stringSchema(),
-                                                "base64Mp3", stringSchema(),
-                                                "pngFormat", stringSchema()
+                                        Map.ofEntries(
+                                                Map.entry("rootPath", stringSchema()),
+                                                Map.entry("nodePath", stringSchema()),
+                                                Map.entry("op", stringSchema()),
+                                                Map.entry("autoParse", booleanSchema()),
+                                                Map.entry("name", stringSchema()),
+                                                Map.entry("value", stringSchema()),
+                                                Map.entry("x", numberSchema()),
+                                                Map.entry("y", numberSchema()),
+                                                Map.entry("base64Png", stringSchema()),
+                                                Map.entry("base64Mp3", stringSchema()),
+                                                Map.entry("pngFormat", stringSchema())
                                         ),
-                                        List.of("path")
+                                        List.of("rootPath")
                                 ))),
-                                Map.entry("path", stringSchema()),
+                                Map.entry("rootPath", stringSchema()),
+                                Map.entry("nodePath", stringSchema()),
                                 Map.entry("op", stringSchema()),
                                 Map.entry("autoParse", booleanSchema()),
                                 Map.entry("name", stringSchema()),
@@ -210,18 +221,20 @@ public final class McpToolMetadataRegistry {
                 )),
                 new McpToolDescriptor("save_node", "保存指定文件节点。", objectSchema(
                         Map.of(
-                                "path", stringSchema(),
+                                "rootPath", stringSchema(),
+                                "nodePath", stringSchema(),
                                 "autoParse", booleanSchema()
                         ),
-                        List.of("path")
+                        List.of("rootPath")
                 )),
                 new McpToolDescriptor("save_as", "将指定文件节点另存为到目标路径。", objectSchema(
                         Map.of(
-                                "path", stringSchema(),
+                                "rootPath", stringSchema(),
+                                "nodePath", stringSchema(),
                                 "filePath", stringSchema(),
                                 "autoParse", booleanSchema()
                         ),
-                        List.of("path", "filePath")
+                        List.of("rootPath", "filePath")
                 ))
         );
     }
@@ -234,6 +247,17 @@ public final class McpToolMetadataRegistry {
                         "userKeyBase64", stringSchema()
                 ),
                 List.of("name", "ivBase64", "userKeyBase64")
+        );
+    }
+
+    private Map<String, Object> nodeReferenceSchema() {
+        return objectSchema(nodeReferenceProperties(), List.of("rootPath"));
+    }
+
+    private Map<String, Object> nodeReferenceProperties() {
+        return Map.of(
+                "rootPath", stringSchema(),
+                "nodePath", stringSchema()
         );
     }
 

@@ -23,9 +23,8 @@ public final class SaveNodeTool extends BaseSessionTool {
     @Override
     public Map<String, Object> invoke(Map<String, Object> params) {
         var session = session(params);
-        String path = ToolParamHelper.requireString(params, "path");
         boolean autoParse = ToolParamHelper.getBoolean(params, "autoParse", true);
-        service.saveNode(session, path, autoParse);
+        service.saveNode(session, ToolParamHelper.getNodeReference(params), autoParse);
         return Map.of("ok", true);
     }
 }

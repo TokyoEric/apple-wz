@@ -23,8 +23,7 @@ public final class ListChildrenTool extends BaseSessionTool {
     @Override
     public Map<String, Object> invoke(Map<String, Object> params) {
         var session = session(params);
-        String path = ToolParamHelper.requireString(params, "path");
         boolean autoParse = ToolParamHelper.getBoolean(params, "autoParse", true);
-        return Map.of("children", service.listChildren(session, path, autoParse));
+        return Map.of("children", service.listChildren(session, ToolParamHelper.getNodeReference(params), autoParse));
     }
 }

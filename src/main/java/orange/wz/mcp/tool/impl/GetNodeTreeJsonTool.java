@@ -23,9 +23,8 @@ public final class GetNodeTreeJsonTool extends BaseSessionTool {
     @Override
     public Map<String, Object> invoke(Map<String, Object> params) {
         var session = session(params);
-        String path = ToolParamHelper.requireString(params, "path");
         boolean autoParse = ToolParamHelper.getBoolean(params, "autoParse", true);
         int maxDepth = params.get("maxDepth") instanceof Number n ? n.intValue() : 0;
-        return Map.of("tree", service.getNodeTreeJson(session, path, autoParse, maxDepth));
+        return Map.of("tree", service.getNodeTreeJson(session, ToolParamHelper.getNodeReference(params), autoParse, maxDepth));
     }
 }

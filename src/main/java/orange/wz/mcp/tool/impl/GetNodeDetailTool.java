@@ -23,8 +23,7 @@ public final class GetNodeDetailTool extends BaseSessionTool {
     @Override
     public Map<String, Object> invoke(Map<String, Object> params) {
         var session = session(params);
-        String path = ToolParamHelper.requireString(params, "path");
         boolean autoParse = ToolParamHelper.getBoolean(params, "autoParse", true);
-        return Map.of("detail", service.getNodeDetail(session, path, autoParse));
+        return Map.of("detail", service.getNodeDetail(session, ToolParamHelper.getNodeReference(params), autoParse));
     }
 }

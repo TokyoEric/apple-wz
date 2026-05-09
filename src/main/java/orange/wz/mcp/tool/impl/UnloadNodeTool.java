@@ -22,9 +22,8 @@ public final class UnloadNodeTool extends BaseSessionTool {
 
     @Override
     public Map<String, Object> invoke(Map<String, Object> params) {
-        String path = ToolParamHelper.requireString(params, "path");
         var session = session(params);
-        service.unloadByPath(session, path);
+        service.unloadNode(session, ToolParamHelper.getNodeReference(params));
         return Map.of("ok", true, "rootCount", session.getRoots().size());
     }
 }

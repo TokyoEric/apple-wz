@@ -5,7 +5,6 @@ import orange.wz.mcp.session.McpSessionManager;
 import orange.wz.mcp.tool.support.BaseSessionTool;
 import orange.wz.mcp.tool.support.ToolParamHelper;
 
-import java.util.List;
 import java.util.Map;
 
 public final class CopyNodesTool extends BaseSessionTool {
@@ -24,9 +23,9 @@ public final class CopyNodesTool extends BaseSessionTool {
     @Override
     public Map<String, Object> invoke(Map<String, Object> params) {
         var session = session(params);
-        List<String> paths = ToolParamHelper.getStringList(params, "paths");
+        var sources = ToolParamHelper.getNodeReferenceList(params, "sources");
         boolean autoParse = ToolParamHelper.getBoolean(params, "autoParse", true);
-        service.copyByPaths(session, paths, autoParse);
-        return Map.of("copiedCount", paths.size());
+        service.copyNodes(session, sources, autoParse);
+        return Map.of("copiedCount", sources.size());
     }
 }
