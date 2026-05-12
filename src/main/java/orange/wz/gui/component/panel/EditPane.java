@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import orange.wz.gui.Clipboard;
 import orange.wz.gui.MainFrame;
 import orange.wz.gui.component.FileDialog;
+import orange.wz.gui.component.canvas.CanvasWall;
 import orange.wz.gui.component.dialog.*;
 import orange.wz.gui.component.form.data.*;
 import orange.wz.gui.component.form.impl.*;
@@ -231,14 +232,14 @@ public final class EditPane extends JSplitPane {
         });
 
         // 右键菜单
-        wzFilePopupMenu = new WzFileMenu(this, tree);
+        wzFilePopupMenu = new WzFileMenu(this);
         wzFolderPopupMenu = new WzFolderMenu(this, tree);
-        wzImageFilePopupMenu = new WzImageFileMenu(this, tree);
-        wzXmlFilePopupMenu = new WzXmlFileMenu(this, tree);
-        wzDirectoryPopupMenu = new WzDirectoryMenu(this, tree);
-        wzImagePopupMenu = new WzImageMenu(this, tree);
-        wzListPropertyPopupMenu = new WzListPropertyMenu(this, tree);
-        wzValuePropertyPopupMenu = new WzValuePropertyMenu(this, tree);
+        wzImageFilePopupMenu = new WzImageFileMenu(this);
+        wzXmlFilePopupMenu = new WzXmlFileMenu(this);
+        wzDirectoryPopupMenu = new WzDirectoryMenu(this);
+        wzImagePopupMenu = new WzImageMenu(this);
+        wzListPropertyPopupMenu = new WzListPropertyMenu(this);
+        wzValuePropertyPopupMenu = new WzValuePropertyMenu(this);
         tree.addMouseListener(new MouseAdapter() {
             private void showPopup(MouseEvent e) {
                 if (!e.isPopupTrigger()) return;
@@ -471,19 +472,25 @@ public final class EditPane extends JSplitPane {
         }
 
         // 更新状态栏
+        String text = getNodePathText(wzObject, npcAction);
+        MainFrame.getInstance().setStatusTextDirect(text);
+    }
+
+    private String getNodePathText(WzObject wzObject, String npcAction) {
         String text = wzObject.getPath();
-        if (wzObject instanceof WzFolder obj) {
-            text = text + "  /  " + obj.getKeyBoxName();
-        } else if (wzObject instanceof WzDirectory obj && obj.isWzFile()) {
-            text = text + "  /  " + obj.getWzFile().getKeyBoxName() + "  /  版本 " + obj.getWzFile().getHeader().getFileVersion();
-        } else if (wzObject instanceof WzImageFile obj) {
-            text = text + "  /  " + obj.getKeyBoxName();
+        switch (wzObject) {
+            case WzFolder obj -> text = text + "  /  " + obj.getKeyBoxName();
+            case WzDirectory obj when obj.isWzFile() ->
+                    text = text + "  /  " + obj.getWzFile().getKeyBoxName() + "  /  版本 " + obj.getWzFile().getHeader().getFileVersion();
+            case WzImageFile obj -> text = text + "  /  " + obj.getKeyBoxName();
+            default -> {
+            }
         }
 
         if (npcAction != null) {
             text = text + " (" + npcAction + ")";
         }
-        MainFrame.getInstance().setStatusTextDirect(text);
+        return text;
     }
 
     /**
@@ -663,15 +670,17 @@ public final class EditPane extends JSplitPane {
                 DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
                 WzObject wzObject = (WzObject) node.getUserObject();
                 if (wzObject instanceof WzFolder) {
-                    return;
+                    log.warn("系统文件夹 不支持删除功能");
                 } else if (wzObject instanceof WzDirectory directory) {
                     if (directory.isWzFile()) {
-                        return;
+                        log.warn("wz文件 不支持删除功能");
                     } else {
                         wzDirectoryPopupMenu.getDeleteBtn().doClick();
                     }
-                } else if (wzObject instanceof WzImageFile || wzObject instanceof WzXmlFile) {
-                    return;
+                } else if (wzObject instanceof WzImageFile) {
+                    log.warn("img文件 不支持删除功能");
+                } else if (wzObject instanceof WzXmlFile) {
+                    log.warn("xml文件 不支持删除功能");
                 } else if (wzObject instanceof WzImage) {
                     wzImagePopupMenu.getDeleteBtn().doClick();
                 } else if (wzObject instanceof WzImageProperty prop) {
@@ -695,10 +704,10 @@ public final class EditPane extends JSplitPane {
                 DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
                 WzObject wzObject = (WzObject) node.getUserObject();
                 if (wzObject instanceof WzFolder) {
-                    return;
+                    log.warn("系统文件夹 不支持复制功能");
                 } else if (wzObject instanceof WzDirectory directory) {
                     if (directory.isWzFile()) {
-                        return;
+                        log.warn("wz文件 不支持复制功能");
                     } else {
                         wzDirectoryPopupMenu.getCopyBtn().doClick();
                     }
@@ -726,15 +735,10 @@ public final class EditPane extends JSplitPane {
                 TreePath[] selectedPaths = tree.getSelectionPaths();
                 if (selectedPaths == null) return;
 
-                // if (selectedPaths.length != 1) {
-                //     JMessageUtil.error("不要多选");
-                //     return;
-                // }
-
                 DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
                 WzObject wzObject = (WzObject) node.getUserObject();
                 if (wzObject instanceof WzFolder) {
-                    return;
+                    log.warn("系统文件夹 不支持粘贴功能");
                 } else if (wzObject instanceof WzDirectory directory) {
                     if (directory.isWzFile()) {
                         wzFilePopupMenu.getPasteBtn().doClick();
@@ -751,7 +755,7 @@ public final class EditPane extends JSplitPane {
                     if (prop.isListProperty()) {
                         wzListPropertyPopupMenu.getPasteBtn().doClick();
                     } else {
-                        return;
+                        log.warn("粘贴对象 WzImageProperty 不是一个 List");
                     }
                 }
             }
@@ -1250,10 +1254,11 @@ public final class EditPane extends JSplitPane {
 
     /**
      * 使用菜单栏的密钥重新载入文件节点
-     *
-     * @param treePaths tree 选中的节点
      */
-    public void reloadFile(TreePath[] treePaths) {
+    public void reloadFile() {
+        TreePath[] treePaths = tree.getSelectionPaths();
+        if (treePaths == null) return;
+
         WzKey key = (WzKey) MainFrame.getInstance().getKeyBox().getSelectedItem();
         if (key == null) {
             MainFrame.getInstance().setStatusText("没有选择密钥?");
@@ -1329,13 +1334,10 @@ public final class EditPane extends JSplitPane {
     }
 
     // 保存 -------------------------------------------------------------------------------------------------------------
+    public void save() {
+        TreePath[] treePaths = tree.getSelectionPaths();
+        if (treePaths == null) return;
 
-    /**
-     * 保存节点文件
-     *
-     * @param treePaths 选中的节点
-     */
-    public void saveFiles(TreePath[] treePaths) {
         MainFrame.getInstance().setStatusText("文件保存中");
         MainFrame.getInstance().updateProgress(0, 0);
         new SwingWorker<>() {
@@ -1433,9 +1435,13 @@ public final class EditPane extends JSplitPane {
     /**
      * 文件另存为
      *
-     * @param node 要保存的文件节点
      */
-    public void saveAs(DefaultMutableTreeNode node) {
+    public void saveAs() {
+        TreePath[] selectedPaths = tree.getSelectionPaths();
+        if (TreePathUtil.isNullOrMultiple(selectedPaths)) return;
+
+        DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
+
         WzObject wzObject = (WzObject) node.getUserObject();
         if (wzObject instanceof WzDirectory wzDir && wzDir.isWzFile()) {
             wzObject = wzDir.getWzFile();
@@ -1517,10 +1523,11 @@ public final class EditPane extends JSplitPane {
 
     /**
      * 导出 img
-     *
-     * @param selectedPaths 要处理的节点
      */
-    public void exportImg(TreePath[] selectedPaths) {
+    public void exportImg() {
+        TreePath[] selectedPaths = tree.getSelectionPaths();
+        if (selectedPaths == null) return;
+
         File folder = FileDialog.chooseOpenFolder("请选择输出目录");
         if (folder == null) {
             log.info("用户取消了操作");
@@ -1608,10 +1615,11 @@ public final class EditPane extends JSplitPane {
 
     /**
      * 导出 XML
-     *
-     * @param selectedPaths 要处理的节点
      */
-    public void exportXml(TreePath[] selectedPaths) {
+    public void exportXml() {
+        TreePath[] selectedPaths = tree.getSelectionPaths();
+        if (selectedPaths == null) return;
+
         ExportXmlDialog dialog = new ExportXmlDialog(this);
         ExportXmlData data = dialog.getData();
         if (data == null) return;
@@ -1689,10 +1697,11 @@ public final class EditPane extends JSplitPane {
 
     /**
      * 修改密钥
-     *
-     * @param selectedPaths 要处理的节点
      */
-    public void changeKey(TreePath[] selectedPaths) {
+    public void changeKey() {
+        TreePath[] selectedPaths = tree.getSelectionPaths();
+        if (selectedPaths == null) return;
+
         List<WzObject> collector = new ArrayList<>();
         boolean hasWzFile = false;
         for (TreePath treePath : selectedPaths) {
@@ -1742,10 +1751,12 @@ public final class EditPane extends JSplitPane {
 
     /**
      * 导入 Img
-     *
-     * @param node 导入到该节点
      */
-    public void importImg(DefaultMutableTreeNode node) {
+    public void importImg() {
+        TreePath[] selectedPaths = tree.getSelectionPaths();
+        if (TreePathUtil.isNullOrMultiple(selectedPaths)) return;
+
+        DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
         List<File> imgFiles = FileDialog.chooseOpenFiles(new String[]{"img"});
         attachImg(node, imgFiles);
     }
@@ -1819,10 +1830,12 @@ public final class EditPane extends JSplitPane {
 
     /**
      * 导入 XML
-     *
-     * @param node 导入到该节点
      */
-    public void importXml(DefaultMutableTreeNode node) {
+    public void importXml() {
+        TreePath[] selectedPaths = tree.getSelectionPaths();
+        if (TreePathUtil.isNullOrMultiple(selectedPaths)) return;
+
+        DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
         List<File> xmlFiles = FileDialog.chooseOpenFiles(new String[]{"xml"});
         attachXml(node, xmlFiles);
     }
@@ -2032,6 +2045,60 @@ public final class EditPane extends JSplitPane {
                 }
             }
         }.execute();
+    }
+
+    // 删除 -------------------------------------------------------------------------------------------------------------
+    public void delete() {
+        TreePath[] selectedPaths = tree.getSelectionPaths();
+        if (selectedPaths == null) return;
+
+        for (TreePath treePath : selectedPaths) {
+            DefaultMutableTreeNode node = (DefaultMutableTreeNode) treePath.getLastPathComponent();
+            WzObject wzObject = (WzObject) node.getUserObject();
+            WzObject pWzObject = wzObject.getParent();
+
+            switch (pWzObject) {
+                case WzDirectory directory -> {
+                    boolean success = false;
+                    if (wzObject instanceof WzImage wzImg) {
+                        success = directory.removeImageChild(wzImg.getName());
+                    } else if (wzObject instanceof WzDirectory wzDir) {
+                        success = directory.removeDirectoryChild(wzDir.getName());
+                    }
+
+                    if (!success) {
+                        log.warn("节点删除失败, 父节点: {} 子节点: {}", pWzObject.getName(), directory.getName());
+                        continue;
+                    }
+                    removeNodeFromTree((DefaultMutableTreeNode) treePath.getLastPathComponent());
+                }
+                case WzImage image when image.removeChild(wzObject.getName()) ->
+                        removeNodeFromTree((DefaultMutableTreeNode) treePath.getLastPathComponent());
+                case WzImageProperty property when property.removeChild(wzObject.getName()) ->
+                        removeNodeFromTree((DefaultMutableTreeNode) treePath.getLastPathComponent());
+                default -> log.error("无法删除节点, 父节点类型: {}", pWzObject.getClass().getSimpleName());
+            }
+        }
+        resetValueForm();
+    }
+
+    // 转移到右侧视图 -----------------------------------------------------------------------------------------------------
+    public void move() {
+        if (!MainFrame.getInstance().getCenterPane().isRightShowing()) {
+            MainFrame.getInstance().getCenterPane().showRightEditPane(true);
+        }
+
+        TreePath[] selectedPaths = tree.getSelectionPaths();
+        if (selectedPaths == null) return;
+
+        EditPane targetPane = MainFrame.getInstance().getCenterPane().getAnotherPane(this);
+        for (TreePath treePath : selectedPaths) {
+            DefaultMutableTreeNode node = (DefaultMutableTreeNode) treePath.getLastPathComponent();
+            WzObject wzObject = (WzObject) node.getUserObject();
+            targetPane.insertNodeToTree(targetPane.getTreeRoot(), wzObject, true);
+            removeNodeFromTree((DefaultMutableTreeNode) treePath.getLastPathComponent());
+        }
+        resetValueForm();
     }
 
     // 剪贴板操作 --------------------------------------------------------------------------------------------------------
@@ -2247,7 +2314,100 @@ public final class EditPane extends JSplitPane {
         insertNodeToTree(treeRoot, wzImageFile, true);
     }
 
-    // 汉化 -------------------------------------------------------------------------------------------------------------
+    // String汉化 -------------------------------------------------------------------------------------------------------
+    public void localizeString() {
+        Instant start = Instant.now();
+        TreePath[] selectedPaths = tree.getSelectionPaths();
+        if (selectedPaths == null) return;
+
+        for (TreePath treePath : selectedPaths) {
+            DefaultMutableTreeNode node = (DefaultMutableTreeNode) treePath.getLastPathComponent();
+            WzObject to = getLocalizeTo(node);
+            WzObject from = getLocalizeFrom(to);
+            ChineseUtil.chinese(from, to);
+        }
+
+        Instant end = Instant.now();
+        Duration duration = Duration.between(start, end);
+        MainFrame.getInstance().setStatusText("汉化完成! 耗时 %d ms", duration.toMillis());
+    }
+
+    private WzObject getLocalizeTo(DefaultMutableTreeNode node) {
+        WzObject wzObject = (WzObject) node.getUserObject();
+        switch (wzObject) {
+            case WzDirectory wzDirectory when wzDirectory.isWzFile() -> {
+                WzFile wzFile = wzDirectory.getWzFile();
+                if (wzFile.getName().equalsIgnoreCase("List.wz")) {
+                    MainFrame.getInstance().setStatusTextWithErrLog("无法对 List.wz 文件使用该功能");
+                    throw new RuntimeException();
+                }
+                if (!wzFile.parse()) {
+                    MainFrame.getInstance().setStatusTextWithErrLog(String.format("文件 %s 解析失败: %s", wzFile.getName(), wzFile.getStatus().getMessage()));
+                    throw new RuntimeException();
+                }
+                return wzFile;
+            }
+            case WzImage wzImage -> {
+                if (!wzImage.parse()) {
+                    MainFrame.getInstance().setStatusTextWithErrLog(String.format("文件 %s 解析失败: %s", wzImage.getName(), wzImage.getStatus().getMessage()));
+                    throw new RuntimeException();
+                }
+                return wzImage;
+            }
+            case WzImageProperty prop -> {
+                return prop;
+            }
+            default -> {
+                MainFrame.getInstance().setStatusTextWithErrLog(String.format("不支持的节点类型 %s", wzObject.getClass().getSimpleName()));
+                throw new RuntimeException();
+            }
+        }
+    }
+
+    private WzObject getLocalizeFrom(WzObject to) {
+        switch (to) {
+            case WzFile wzFile -> {
+                DefaultMutableTreeNode rightTreeRoot = MainFrame.getInstance().getCenterPane().getAnotherPane(this).getTreeRoot();
+                DefaultMutableTreeNode rightNode = MainFrame.getInstance().getCenterPane().getAnotherPane(this).findTreeNodeByName(rightTreeRoot, wzFile.getName());
+                if (rightNode == null) {
+                    MainFrame.getInstance().setStatusTextWithErrLog(String.format("找不到中文版本的 %s", wzFile.getName()));
+                    throw new RuntimeException();
+                }
+                WzFile from = ((WzDirectory) rightNode.getUserObject()).getWzFile();
+                if (!from.parse()) {
+                    MainFrame.getInstance().setStatusTextWithErrLog(String.format("中文版文件 %s 解析失败: %s", from.getName(), from.getStatus().getMessage()));
+                    throw new RuntimeException();
+                }
+                return from;
+            }
+            case WzImage wzImage -> {
+                WzImage from = (WzImage) MainFrame.getInstance().getCenterPane().getAnotherPane(this).findWzObjectInTreeByPath(wzImage.getPath());
+                if (from == null) {
+                    MainFrame.getInstance().setStatusTextWithErrLog(String.format("找不到中文版本的 %s", wzImage.getName()));
+                    throw new RuntimeException();
+                }
+                if (!from.parse()) {
+                    MainFrame.getInstance().setStatusTextWithErrLog(String.format("中文版文件 %s 解析失败: %s", from.getName(), from.getStatus().getMessage()));
+                    throw new RuntimeException();
+                }
+                return from;
+            }
+            case WzImageProperty prop -> {
+                WzImageProperty from = (WzImageProperty) MainFrame.getInstance().getCenterPane().getAnotherPane(this).findWzObjectInTreeByPath(prop.getPath());
+                if (from == null) {
+                    MainFrame.getInstance().setStatusTextWithErrLog(String.format("找不到中文版本的 %s", prop.getName()));
+                    throw new RuntimeException();
+                }
+                return from;
+            }
+            default -> {
+                MainFrame.getInstance().setStatusTextWithErrLog(String.format("不支持的节点类型 %s", to.getClass().getSimpleName()));
+                throw new RuntimeException();
+            }
+        }
+    }
+
+    // 图片汉化 ----------------------------------------------------------------------------------------------------------
     public void compareImg() {
         TreePath[] selectedPaths = tree.getSelectionPaths();
         if (selectedPaths == null) return;
@@ -2376,6 +2536,45 @@ public final class EditPane extends JSplitPane {
         MainFrame.getInstance().setStatusText("修改完成");
     }
 
+    // 图片嗅探 ----------------------------------------------------------------------------------------------------------
+    public void imageFinder() {
+        TreePath[] selectedPaths = tree.getSelectionPaths();
+        if (TreePathUtil.isNullOrMultiple(selectedPaths)) return;
+
+        DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
+        WzObject wzObject = (WzObject) node.getUserObject();
+        List<? extends WzObject> children;
+        List<CanvasUtilData> data = new ArrayList<>();
+
+        switch (wzObject) {
+            case WzDirectory wzDir -> {
+                if (wzDir.getWzFile().parse()) {
+                    children = wzDir.getChildren();
+                } else {
+                    MainFrame.getInstance().setStatusTextWithErrLog(String.format("文件 %s 解析失败: %s", wzDir.getName(), wzDir.getWzFile().getStatus().getMessage()));
+                    return;
+                }
+            }
+            case WzImage wzImage -> {
+                if (wzImage.parse()) {
+                    children = wzImage.getChildren();
+                } else {
+                    MainFrame.getInstance().setStatusTextWithErrLog(String.format("文件 %s 解析失败: %s", wzImage.getName(), wzImage.getStatus().getMessage()));
+                    return;
+                }
+            }
+            case WzImageProperty prop when prop.isListProperty() -> children = prop.getChildren();
+            default -> {
+                MainFrame.getInstance().setStatusTextWithErrLog(String.format("未支持的节点类型 %s", wzObject.getClass().getSimpleName()));
+                return;
+            }
+        }
+
+        CanvasUtil.search(data, children);
+
+        CanvasWall canvasWall = new CanvasWall(data, wzObject.getPath(), node, this);
+        canvasWall.setVisible(true);
+    }
 
     // 批量缩放图片 ------------------------------------------------------------------------------------------------------
     public void scaleImage() {
@@ -2411,6 +2610,7 @@ public final class EditPane extends JSplitPane {
         }.execute();
     }
 
+    // 批量删除节点 ------------------------------------------------------------------------------------------------------
     public void removeAllWzChildWithName() {
         TreePath[] selectedPaths = tree.getSelectionPaths();
         if (selectedPaths == null) return;
@@ -2447,6 +2647,7 @@ public final class EditPane extends JSplitPane {
         MainFrame.getInstance().setStatusText("总共删除了 %d 个节点", count);
     }
 
+    // 批量删除非现金装备 --------------------------------------------------------------------------------------------------
     public void removeNonCashEqp() {
         TreePath[] selectedPaths = tree.getSelectionPaths();
         if (selectedPaths == null) return;
@@ -2496,5 +2697,759 @@ public final class EditPane extends JSplitPane {
         }
 
         log.info("处理完毕: 共 {} 个装备, 现金装备 {} , 非现金装备 {}, 找不到 info 节点 {} 个", size, cashCount, delCount, notfoundCount);
+    }
+
+    // Outlink ---------------------------------------------------------------------------------------------------------
+    public void outlink() {
+        Instant now = Instant.now();
+        TreePath[] selectedPaths = tree.getSelectionPaths();
+        if (selectedPaths == null) return;
+
+        List<WzObject> objects = new ArrayList<>();
+        for (TreePath treePath : selectedPaths) {
+            DefaultMutableTreeNode node = (DefaultMutableTreeNode) treePath.getLastPathComponent();
+            WzObject wzObject = (WzObject) node.getUserObject();
+            objects.add(wzObject);
+        }
+
+        SwingWorker<Void, Void> worker = new SwingWorker<>() {
+            @Override
+            protected Void doInBackground() {
+                Outlink.replace(objects);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    get();
+                    Instant end = Instant.now();
+                    MainFrame.getInstance().setStatusText("Outlink 结束，耗时 %d 秒", Duration.between(now, end).toSeconds());
+                } catch (Exception ex) {
+                    throw new RuntimeException(ex);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    // 创建子节点 --------------------------------------------------------------------------------------------------------
+    public void addWzDirectory() {
+        TreePath[] selectedPaths = tree.getSelectionPaths();
+        if (TreePathUtil.isNullOrMultiple(selectedPaths)) return;
+
+        DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
+
+        NodeDialog nodeDialog = new NodeDialog("新增 Directory", this);
+        NodeFormData data = nodeDialog.getData();
+
+        if (data == null) return;
+
+        String name = data.getName();
+
+        if (name.isEmpty()) {
+            JMessageUtil.error("名称不能为空");
+            return;
+        }
+
+        WzDirectory wzDirectory = (WzDirectory) node.getUserObject();
+        WzFile wzFile = wzDirectory.getWzFile();
+        if (!wzFile.parse()) {
+            MainFrame.getInstance().setStatusText("文件 %s 解析失败: %s", wzFile.getName(), wzFile.getStatus().getMessage());
+            throw new RuntimeException();
+        }
+
+        WzDirectory newDir = new WzDirectory(name, wzDirectory, wzFile);
+        if (!wzDirectory.addChild(newDir)) {
+            JMessageUtil.error("名称已存在");
+            return;
+        }
+
+        if (node.isLeaf()) return; // isLeaf 说明未加载数据，就不要插入了
+        newDir.setTempChanged(true);
+        insertNodeToTree(node, newDir, true, 0);
+    }
+
+    public void addWzImage() {
+        TreePath[] selectedPaths = tree.getSelectionPaths();
+        if (TreePathUtil.isNullOrMultiple(selectedPaths)) return;
+
+        DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
+
+        NodeDialog nodeDialog = new NodeDialog("新增 Image", this);
+        NodeFormData data = nodeDialog.getData();
+
+        if (data == null) return;
+
+        String name = data.getName();
+
+        if (name.isEmpty()) {
+            JMessageUtil.error("名称不能为空");
+            return;
+        }
+
+        if (!name.endsWith(".img")) {
+            JMessageUtil.error("Image 名称需要以.img结尾");
+            return;
+        }
+
+        WzDirectory wzDirectory = (WzDirectory) node.getUserObject();
+        WzFile wzFile = wzDirectory.getWzFile();
+        if (!wzFile.parse()) {
+            MainFrame.getInstance().setStatusText("文件 %s 解析失败: %s", wzFile.getName(), wzFile.getStatus().getMessage());
+            throw new RuntimeException();
+        }
+
+        WzImage newImg = new WzImage(name, wzDirectory, wzFile.getReader());
+        if (!wzDirectory.addChild(newImg)) {
+            JMessageUtil.error("名称已存在");
+            return;
+        }
+
+        if (node.isLeaf()) return; // isLeaf 说明未加载数据，就不要插入了
+        newImg.setTempChanged(true);
+        insertNodeToTree(node, newImg, true, 0);
+    }
+
+    public void addCanvas() {
+        TreePath[] selectedPaths = tree.getSelectionPaths();
+        if (TreePathUtil.isNullOrMultiple(selectedPaths)) return;
+
+        DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
+
+        CanvasDialog nodeDialog = new CanvasDialog("新增 Canvas", this);
+        CanvasFormData data = nodeDialog.getData();
+
+        if (data == null) return;
+
+        String name = data.getName();
+
+        if (name.isEmpty()) {
+            JMessageUtil.error("名称不能为空");
+            return;
+        }
+
+        WzObject wzObject = (WzObject) node.getUserObject();
+        WzImage imageRoot;
+        WzCanvasProperty subProp;
+        if (wzObject instanceof WzImage wzImage) {
+            if (!wzImage.parse()) {
+                MainFrame.getInstance().setStatusTextWithErrLog(String.format("文件 %s 解析失败: %s", wzImage.getName(), wzImage.getStatus().getMessage()));
+                throw new RuntimeException();
+            }
+            imageRoot = wzImage;
+            subProp = new WzCanvasProperty(name, wzObject, imageRoot);
+            if (!wzImage.addChild(subProp)) {
+                JMessageUtil.error("名称已存在");
+                return;
+            }
+        } else if (wzObject instanceof WzImageProperty prop) {
+            imageRoot = prop.getWzImage();
+            subProp = new WzCanvasProperty(name, wzObject, imageRoot);
+            if (!prop.addChild(subProp)) {
+                JMessageUtil.error("名称已存在");
+                return;
+            }
+        } else {
+            MainFrame.getInstance().setStatusTextWithErrLog(String.format("不支持的节点类型 %s", wzObject.getClass().getSimpleName()));
+            throw new RuntimeException();
+        }
+
+        subProp.initPngProperty(name, subProp, imageRoot);
+        subProp.setPng(data.getValue(), data.getFormat(), data.getScale());
+
+        if (node.isLeaf()) return; // isLeaf 说明未加载数据，就不要插入了
+        subProp.setTempChanged(true);
+        insertNodeToTree(node, subProp, true, 0);
+    }
+
+    public void addConvex() {
+        TreePath[] selectedPaths = tree.getSelectionPaths();
+        if (TreePathUtil.isNullOrMultiple(selectedPaths)) return;
+
+        DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
+
+        NodeDialog nodeDialog = new NodeDialog("新增 Convex", this);
+        NodeFormData data = nodeDialog.getData();
+
+        if (data == null) return;
+
+        String name = data.getName();
+
+        if (name.isEmpty()) {
+            JMessageUtil.error("名称不能为空");
+            return;
+        }
+
+        WzObject wzObject = (WzObject) node.getUserObject();
+        WzImage imageRoot;
+        WzConvexProperty subProp;
+        if (wzObject instanceof WzImage wzImage) {
+            if (!wzImage.parse()) {
+                MainFrame.getInstance().setStatusTextWithErrLog(String.format("文件 %s 解析失败: %s", wzImage.getName(), wzImage.getStatus().getMessage()));
+                throw new RuntimeException();
+            }
+            imageRoot = wzImage;
+            subProp = new WzConvexProperty(name, wzObject, imageRoot);
+            if (!wzImage.addChild(subProp)) {
+                JMessageUtil.error("名称已存在");
+                return;
+            }
+        } else if (wzObject instanceof WzImageProperty prop) {
+            imageRoot = prop.getWzImage();
+            subProp = new WzConvexProperty(name, wzObject, imageRoot);
+            if (!prop.addChild(subProp)) {
+                JMessageUtil.error("名称已存在");
+                return;
+            }
+        } else {
+            MainFrame.getInstance().setStatusTextWithErrLog(String.format("不支持的节点类型 %s", wzObject.getClass().getSimpleName()));
+            throw new RuntimeException();
+        }
+
+        if (node.isLeaf()) return; // isLeaf 说明未加载数据，就不要插入了
+        subProp.setTempChanged(true);
+        insertNodeToTree(node, subProp, true, 0);
+    }
+
+    public void addDouble() {
+        TreePath[] selectedPaths = tree.getSelectionPaths();
+        if (TreePathUtil.isNullOrMultiple(selectedPaths)) return;
+
+        DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
+
+        DoubleDialog nodeDialog = new DoubleDialog("新增 Double", this);
+        DoubleFormData data = nodeDialog.getData();
+
+        if (data == null) return;
+
+        String name = data.getName();
+
+        if (name.isEmpty()) {
+            JMessageUtil.error("名称不能为空");
+            return;
+        }
+
+        WzObject wzObject = (WzObject) node.getUserObject();
+        WzImage imageRoot;
+        WzDoubleProperty subProp;
+        if (wzObject instanceof WzImage wzImage) {
+            if (!wzImage.parse()) {
+                MainFrame.getInstance().setStatusTextWithErrLog(String.format("文件 %s 解析失败: %s", wzImage.getName(), wzImage.getStatus().getMessage()));
+                throw new RuntimeException();
+            }
+            imageRoot = wzImage;
+            subProp = new WzDoubleProperty(name, data.getValue(), wzObject, imageRoot);
+            if (!wzImage.addChild(subProp)) {
+                JMessageUtil.error("名称已存在");
+                return;
+            }
+        } else if (wzObject instanceof WzImageProperty prop) {
+            imageRoot = prop.getWzImage();
+            subProp = new WzDoubleProperty(name, data.getValue(), wzObject, imageRoot);
+            if (!prop.addChild(subProp)) {
+                JMessageUtil.error("名称已存在");
+                return;
+            }
+        } else {
+            MainFrame.getInstance().setStatusTextWithErrLog(String.format("不支持的节点类型 %s", wzObject.getClass().getSimpleName()));
+            throw new RuntimeException();
+        }
+
+        if (node.isLeaf()) return; // isLeaf 说明未加载数据，就不要插入了
+        subProp.setTempChanged(true);
+        insertNodeToTree(node, subProp, true, 0);
+    }
+
+    public void addFloat() {
+        TreePath[] selectedPaths = tree.getSelectionPaths();
+        if (TreePathUtil.isNullOrMultiple(selectedPaths)) return;
+
+        DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
+
+        FloatDialog nodeDialog = new FloatDialog("新增 Float", this);
+        FloatFormData data = nodeDialog.getData();
+
+        if (data == null) return;
+
+        String name = data.getName();
+
+        if (name.isEmpty()) {
+            JMessageUtil.error("名称不能为空");
+            return;
+        }
+
+        WzObject wzObject = (WzObject) node.getUserObject();
+        WzImage imageRoot;
+        WzFloatProperty subProp;
+        if (wzObject instanceof WzImage wzImage) {
+            if (!wzImage.parse()) {
+                MainFrame.getInstance().setStatusTextWithErrLog(String.format("文件 %s 解析失败: %s", wzImage.getName(), wzImage.getStatus().getMessage()));
+                throw new RuntimeException();
+            }
+            imageRoot = wzImage;
+            subProp = new WzFloatProperty(name, data.getValue(), wzObject, imageRoot);
+            if (!wzImage.addChild(subProp)) {
+                JMessageUtil.error("名称已存在");
+                return;
+            }
+        } else if (wzObject instanceof WzImageProperty prop) {
+            imageRoot = prop.getWzImage();
+            subProp = new WzFloatProperty(name, data.getValue(), wzObject, imageRoot);
+            if (!prop.addChild(subProp)) {
+                JMessageUtil.error("名称已存在");
+                return;
+            }
+        } else {
+            MainFrame.getInstance().setStatusTextWithErrLog(String.format("不支持的节点类型 %s", wzObject.getClass().getSimpleName()));
+            throw new RuntimeException();
+        }
+
+        if (node.isLeaf()) return; // isLeaf 说明未加载数据，就不要插入了
+        subProp.setTempChanged(true);
+        insertNodeToTree(node, subProp, true, 0);
+    }
+
+    public void addInt() {
+        TreePath[] selectedPaths = tree.getSelectionPaths();
+        if (TreePathUtil.isNullOrMultiple(selectedPaths)) return;
+
+        DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
+
+        IntDialog nodeDialog = new IntDialog("新增 Int", this);
+        IntFormData data = nodeDialog.getData();
+
+        if (data == null) return;
+
+        String name = data.getName();
+
+        if (name.isEmpty()) {
+            JMessageUtil.error("名称不能为空");
+            return;
+        }
+
+        WzObject wzObject = (WzObject) node.getUserObject();
+        WzImage imageRoot;
+        WzIntProperty subProp;
+        if (wzObject instanceof WzImage wzImage) {
+            if (!wzImage.parse()) {
+                MainFrame.getInstance().setStatusTextWithErrLog(String.format("文件 %s 解析失败: %s", wzImage.getName(), wzImage.getStatus().getMessage()));
+                throw new RuntimeException();
+            }
+            imageRoot = wzImage;
+            subProp = new WzIntProperty(name, data.getValue(), wzObject, imageRoot);
+            if (!wzImage.addChild(subProp)) {
+                JMessageUtil.error("名称已存在");
+                return;
+            }
+        } else if (wzObject instanceof WzImageProperty prop) {
+            imageRoot = prop.getWzImage();
+            subProp = new WzIntProperty(name, data.getValue(), wzObject, imageRoot);
+            if (!prop.addChild(subProp)) {
+                JMessageUtil.error("名称已存在");
+                return;
+            }
+        } else {
+            MainFrame.getInstance().setStatusTextWithErrLog(String.format("不支持的节点类型 %s", wzObject.getClass().getSimpleName()));
+            throw new RuntimeException();
+        }
+
+        if (node.isLeaf()) return; // isLeaf 说明未加载数据，就不要插入了
+        subProp.setTempChanged(true);
+        insertNodeToTree(node, subProp, true, 0);
+    }
+
+    public void addList() {
+        TreePath[] selectedPaths = tree.getSelectionPaths();
+        if (TreePathUtil.isNullOrMultiple(selectedPaths)) return;
+
+        DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
+
+        NodeDialog nodeDialog = new NodeDialog("新增 List", this);
+        NodeFormData data = nodeDialog.getData();
+
+        if (data == null) return;
+
+        String name = data.getName();
+
+        if (name.isEmpty()) {
+            JMessageUtil.error("名称不能为空");
+            return;
+        }
+
+        WzObject wzObject = (WzObject) node.getUserObject();
+        WzImage imageRoot;
+        WzListProperty subProp;
+        if (wzObject instanceof WzImage wzImage) {
+            if (!wzImage.parse()) {
+                MainFrame.getInstance().setStatusTextWithErrLog(String.format("文件 %s 解析失败: %s", wzImage.getName(), wzImage.getStatus().getMessage()));
+                throw new RuntimeException();
+            }
+            imageRoot = wzImage;
+            subProp = new WzListProperty(name, wzObject, imageRoot);
+            if (!wzImage.addChild(subProp)) {
+                JMessageUtil.error("名称已存在");
+                return;
+            }
+        } else if (wzObject instanceof WzImageProperty prop) {
+            imageRoot = prop.getWzImage();
+            subProp = new WzListProperty(name, wzObject, imageRoot);
+            if (!prop.addChild(subProp)) {
+                JMessageUtil.error("名称已存在");
+                return;
+            }
+        } else {
+            MainFrame.getInstance().setStatusTextWithErrLog(String.format("不支持的节点类型 %s", wzObject.getClass().getSimpleName()));
+            throw new RuntimeException();
+        }
+
+        if (node.isLeaf()) return; // isLeaf 说明未加载数据，就不要插入了
+        subProp.setTempChanged(true);
+        insertNodeToTree(node, subProp, true, 0);
+    }
+
+    public void addLong() {
+        TreePath[] selectedPaths = tree.getSelectionPaths();
+        if (TreePathUtil.isNullOrMultiple(selectedPaths)) return;
+
+        DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
+
+        LongDialog nodeDialog = new LongDialog("新增 Long", this);
+        LongFormData data = nodeDialog.getData();
+
+        if (data == null) return;
+
+        String name = data.getName();
+
+        if (name.isEmpty()) {
+            JMessageUtil.error("名称不能为空");
+            return;
+        }
+
+        WzObject wzObject = (WzObject) node.getUserObject();
+        WzImage imageRoot;
+        WzLongProperty subProp;
+        if (wzObject instanceof WzImage wzImage) {
+            if (!wzImage.parse()) {
+                MainFrame.getInstance().setStatusTextWithErrLog(String.format("文件 %s 解析失败: %s", wzImage.getName(), wzImage.getStatus().getMessage()));
+                throw new RuntimeException();
+            }
+            imageRoot = wzImage;
+            subProp = new WzLongProperty(name, data.getValue(), wzObject, imageRoot);
+            if (!wzImage.addChild(subProp)) {
+                JMessageUtil.error("名称已存在");
+                return;
+            }
+        } else if (wzObject instanceof WzImageProperty prop) {
+            imageRoot = prop.getWzImage();
+            subProp = new WzLongProperty(name, data.getValue(), wzObject, imageRoot);
+            if (!prop.addChild(subProp)) {
+                JMessageUtil.error("名称已存在");
+                return;
+            }
+        } else {
+            MainFrame.getInstance().setStatusTextWithErrLog(String.format("不支持的节点类型 %s", wzObject.getClass().getSimpleName()));
+            throw new RuntimeException();
+        }
+
+        if (node.isLeaf()) return; // isLeaf 说明未加载数据，就不要插入了
+        subProp.setTempChanged(true);
+        insertNodeToTree(node, subProp, true, 0);
+    }
+
+    public void addNull() {
+        TreePath[] selectedPaths = tree.getSelectionPaths();
+        if (TreePathUtil.isNullOrMultiple(selectedPaths)) return;
+
+        DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
+
+        NodeDialog nodeDialog = new NodeDialog("新增 Null", this);
+        NodeFormData data = nodeDialog.getData();
+
+        if (data == null) return;
+
+        String name = data.getName();
+
+        if (name.isEmpty()) {
+            JMessageUtil.error("名称不能为空");
+            return;
+        }
+
+        WzObject wzObject = (WzObject) node.getUserObject();
+        WzImage imageRoot;
+        WzNullProperty subProp;
+        if (wzObject instanceof WzImage wzImage) {
+            if (!wzImage.parse()) {
+                MainFrame.getInstance().setStatusTextWithErrLog(String.format("文件 %s 解析失败: %s", wzImage.getName(), wzImage.getStatus().getMessage()));
+                throw new RuntimeException();
+            }
+            imageRoot = wzImage;
+            subProp = new WzNullProperty(name, wzObject, imageRoot);
+            if (!wzImage.addChild(subProp)) {
+                JMessageUtil.error("名称已存在");
+                return;
+            }
+        } else if (wzObject instanceof WzImageProperty prop) {
+            imageRoot = prop.getWzImage();
+            subProp = new WzNullProperty(name, wzObject, imageRoot);
+            if (!prop.addChild(subProp)) {
+                JMessageUtil.error("名称已存在");
+                return;
+            }
+        } else {
+            MainFrame.getInstance().setStatusTextWithErrLog(String.format("不支持的节点类型 %s", wzObject.getClass().getSimpleName()));
+            throw new RuntimeException();
+        }
+
+        if (node.isLeaf()) return; // isLeaf 说明未加载数据，就不要插入了
+        subProp.setTempChanged(true);
+        insertNodeToTree(node, subProp, true, 0);
+    }
+
+    public void addShort() {
+        TreePath[] selectedPaths = tree.getSelectionPaths();
+        if (TreePathUtil.isNullOrMultiple(selectedPaths)) return;
+
+        DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
+
+        ShortDialog nodeDialog = new ShortDialog("新增 Short", this);
+        ShortFormData data = nodeDialog.getData();
+
+        if (data == null) return;
+
+        String name = data.getName();
+
+        if (name.isEmpty()) {
+            JMessageUtil.error("名称不能为空");
+            return;
+        }
+
+        WzObject wzObject = (WzObject) node.getUserObject();
+        WzImage imageRoot;
+        WzShortProperty subProp;
+        if (wzObject instanceof WzImage wzImage) {
+            if (!wzImage.parse()) {
+                MainFrame.getInstance().setStatusTextWithErrLog(String.format("文件 %s 解析失败: %s", wzImage.getName(), wzImage.getStatus().getMessage()));
+                throw new RuntimeException();
+            }
+            imageRoot = wzImage;
+            subProp = new WzShortProperty(name, data.getValue(), wzObject, imageRoot);
+            if (!wzImage.addChild(subProp)) {
+                JMessageUtil.error("名称已存在");
+                return;
+            }
+        } else if (wzObject instanceof WzImageProperty prop) {
+            imageRoot = prop.getWzImage();
+            subProp = new WzShortProperty(name, data.getValue(), wzObject, imageRoot);
+            if (!prop.addChild(subProp)) {
+                JMessageUtil.error("名称已存在");
+                return;
+            }
+        } else {
+            MainFrame.getInstance().setStatusTextWithErrLog(String.format("不支持的节点类型 %s", wzObject.getClass().getSimpleName()));
+            throw new RuntimeException();
+        }
+
+        if (node.isLeaf()) return; // isLeaf 说明未加载数据，就不要插入了
+        subProp.setTempChanged(true);
+        insertNodeToTree(node, subProp, true, 0);
+    }
+
+    public void addSound() {
+        TreePath[] selectedPaths = tree.getSelectionPaths();
+        if (TreePathUtil.isNullOrMultiple(selectedPaths)) return;
+
+        DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
+
+        SoundDialog nodeDialog = new SoundDialog("新增 Sound", this);
+        SoundFormData data = nodeDialog.getData();
+
+        if (data == null) return;
+
+        String name = data.getName();
+
+        if (name.isEmpty()) {
+            JMessageUtil.error("名称不能为空");
+            return;
+        }
+
+        WzObject wzObject = (WzObject) node.getUserObject();
+        WzImage imageRoot;
+        WzSoundProperty subProp;
+        if (wzObject instanceof WzImage wzImage) {
+            if (!wzImage.parse()) {
+                MainFrame.getInstance().setStatusTextWithErrLog(String.format("文件 %s 解析失败: %s", wzImage.getName(), wzImage.getStatus().getMessage()));
+                throw new RuntimeException();
+            }
+            imageRoot = wzImage;
+            subProp = new WzSoundProperty(name, wzObject, imageRoot);
+            if (!wzImage.addChild(subProp)) {
+                JMessageUtil.error("名称已存在");
+                return;
+            }
+        } else if (wzObject instanceof WzImageProperty prop) {
+            imageRoot = prop.getWzImage();
+            subProp = new WzSoundProperty(name, wzObject, imageRoot);
+            if (!prop.addChild(subProp)) {
+                JMessageUtil.error("名称已存在");
+                return;
+            }
+        } else {
+            MainFrame.getInstance().setStatusTextWithErrLog(String.format("不支持的节点类型 %s", wzObject.getClass().getSimpleName()));
+            throw new RuntimeException();
+        }
+
+        subProp.setSound(data.getSoundBytes());
+
+        if (node.isLeaf()) return; // isLeaf 说明未加载数据，就不要插入了
+        subProp.setTempChanged(true);
+        insertNodeToTree(node, subProp, true, 0);
+    }
+
+    public void addString() {
+        TreePath[] selectedPaths = tree.getSelectionPaths();
+        if (TreePathUtil.isNullOrMultiple(selectedPaths)) return;
+
+        DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
+
+        StringDialog nodeDialog = new StringDialog("新增 String", this);
+        StringFormData data = nodeDialog.getData();
+
+        if (data == null) return;
+
+        String name = data.getName();
+
+        if (name.isEmpty()) {
+            JMessageUtil.error("名称不能为空");
+            return;
+        }
+
+        WzObject wzObject = (WzObject) node.getUserObject();
+        WzImage imageRoot;
+        WzStringProperty subProp;
+        if (wzObject instanceof WzImage wzImage) {
+            if (!wzImage.parse()) {
+                MainFrame.getInstance().setStatusTextWithErrLog(String.format("文件 %s 解析失败: %s", wzImage.getName(), wzImage.getStatus().getMessage()));
+                throw new RuntimeException();
+            }
+            imageRoot = wzImage;
+            subProp = new WzStringProperty(name, data.getValue(), wzObject, imageRoot);
+            if (!wzImage.addChild(subProp)) {
+                JMessageUtil.error("名称已存在");
+                return;
+            }
+        } else if (wzObject instanceof WzImageProperty prop) {
+            imageRoot = prop.getWzImage();
+            subProp = new WzStringProperty(name, data.getValue(), wzObject, imageRoot);
+            if (!prop.addChild(subProp)) {
+                JMessageUtil.error("名称已存在");
+                return;
+            }
+        } else {
+            MainFrame.getInstance().setStatusTextWithErrLog(String.format("不支持的节点类型 %s", wzObject.getClass().getSimpleName()));
+            throw new RuntimeException();
+        }
+
+        if (node.isLeaf()) return; // isLeaf 说明未加载数据，就不要插入了
+        subProp.setTempChanged(true);
+        insertNodeToTree(node, subProp, true, 0);
+    }
+
+    public void addUOL() {
+        TreePath[] selectedPaths = tree.getSelectionPaths();
+        if (TreePathUtil.isNullOrMultiple(selectedPaths)) return;
+
+        DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
+
+        StringDialog nodeDialog = new StringDialog("新增 UOL", this);
+        StringFormData data = nodeDialog.getData();
+
+        if (data == null) return;
+
+        String name = data.getName();
+
+        if (name.isEmpty()) {
+            JMessageUtil.error("名称不能为空");
+            return;
+        }
+
+        WzObject wzObject = (WzObject) node.getUserObject();
+        WzImage imageRoot;
+        WzUOLProperty subProp;
+        if (wzObject instanceof WzImage wzImage) {
+            if (!wzImage.parse()) {
+                MainFrame.getInstance().setStatusTextWithErrLog(String.format("文件 %s 解析失败: %s", wzImage.getName(), wzImage.getStatus().getMessage()));
+                throw new RuntimeException();
+            }
+            imageRoot = wzImage;
+            subProp = new WzUOLProperty(name, data.getValue(), wzObject, imageRoot);
+            if (!wzImage.addChild(subProp)) {
+                JMessageUtil.error("名称已存在");
+                return;
+            }
+        } else if (wzObject instanceof WzImageProperty prop) {
+            imageRoot = prop.getWzImage();
+            subProp = new WzUOLProperty(name, data.getValue(), wzObject, imageRoot);
+            if (!prop.addChild(subProp)) {
+                JMessageUtil.error("名称已存在");
+                return;
+            }
+        } else {
+            MainFrame.getInstance().setStatusTextWithErrLog(String.format("不支持的节点类型 %s", wzObject.getClass().getSimpleName()));
+            throw new RuntimeException();
+        }
+
+        if (node.isLeaf()) return; // isLeaf 说明未加载数据，就不要插入了
+        subProp.setTempChanged(true);
+        insertNodeToTree(node, subProp, true, 0);
+    }
+
+    public void addVector() {
+        TreePath[] selectedPaths = tree.getSelectionPaths();
+        if (TreePathUtil.isNullOrMultiple(selectedPaths)) return;
+
+        DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
+
+        VectorDialog nodeDialog = new VectorDialog("新增 Vector", this);
+        VectorFormData data = nodeDialog.getData();
+
+        if (data == null) return;
+
+        String name = data.getName();
+
+        if (name.isEmpty()) {
+            JMessageUtil.error("名称不能为空");
+            return;
+        }
+
+        WzObject wzObject = (WzObject) node.getUserObject();
+        WzImage imageRoot;
+        WzVectorProperty subProp;
+        if (wzObject instanceof WzImage wzImage) {
+            if (!wzImage.parse()) {
+                MainFrame.getInstance().setStatusTextWithErrLog(String.format("文件 %s 解析失败: %s", wzImage.getName(), wzImage.getStatus().getMessage()));
+                throw new RuntimeException();
+            }
+            imageRoot = wzImage;
+            subProp = new WzVectorProperty(name, data.getX(), data.getY(), wzObject, imageRoot);
+            if (!wzImage.addChild(subProp)) {
+                JMessageUtil.error("名称已存在");
+                return;
+            }
+        } else if (wzObject instanceof WzImageProperty prop) {
+            imageRoot = prop.getWzImage();
+            subProp = new WzVectorProperty(name, data.getX(), data.getY(), wzObject, imageRoot);
+            if (!prop.addChild(subProp)) {
+                JMessageUtil.error("名称已存在");
+                return;
+            }
+        } else {
+            MainFrame.getInstance().setStatusTextWithErrLog(String.format("不支持的节点类型 %s", wzObject.getClass().getSimpleName()));
+            throw new RuntimeException();
+        }
+
+        if (node.isLeaf()) return; // isLeaf 说明未加载数据，就不要插入了
+        subProp.setTempChanged(true);
+        insertNodeToTree(node, subProp, true, 0);
     }
 }

@@ -3,30 +3,14 @@ package orange.wz.gui.component.menu;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import orange.wz.gui.MainFrame;
-import orange.wz.gui.component.canvas.CanvasWall;
-import orange.wz.gui.component.dialog.*;
-import orange.wz.gui.component.form.data.*;
 import orange.wz.gui.component.panel.EditPane;
-import orange.wz.gui.utils.*;
-import orange.wz.provider.WzImage;
-import orange.wz.provider.WzImageProperty;
-import orange.wz.provider.WzObject;
-import orange.wz.provider.properties.*;
 
 import javax.swing.*;
-import javax.swing.tree.DefaultMutableTreeNode;
-import javax.swing.tree.TreePath;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 
 import static orange.wz.gui.Icons.*;
 
 @Slf4j
 public final class WzListPropertyMenu extends JPopupMenu {
-    private final EditPane editPane;
-    private final JTree tree;
     @Getter
     private final JMenuItem deleteBtn;
     @Getter
@@ -34,10 +18,8 @@ public final class WzListPropertyMenu extends JPopupMenu {
     @Getter
     private final JMenuItem pasteBtn;
 
-    public WzListPropertyMenu(EditPane editPane, JTree tree) {
+    public WzListPropertyMenu(EditPane editPane) {
         super();
-        this.editPane = editPane;
-        this.tree = tree;
 
         JMenu addBtn = new JMenu("子节点");
         addBtn.setIcon(AiOutlinePlus);
@@ -73,7 +55,7 @@ public final class WzListPropertyMenu extends JPopupMenu {
         deleteBtn = new JMenuItem("删除节点", AiOutlineDelete);
         JMenuItem chineseBtn = new JMenuItem("汉化");
         JMenuItem compareImgBtn = new JMenuItem("图片对比");
-        JMenuItem imageBtn = new JMenuItem("图片嗅探");
+        JMenuItem imageFinderBtn = new JMenuItem("图片嗅探");
         JMenuItem outlinkBtn = new JMenuItem("Outlink");
         JMenuItem sicBtn = new JMenuItem("排序并改名");
         JMenuItem delChild = new JMenuItem("批量删除");
@@ -84,26 +66,26 @@ public final class WzListPropertyMenu extends JPopupMenu {
         JMenuItem rawToIcon = new JMenuItem("RawToIcon");
         JMenuItem changeOriginValue = new JMenuItem("修改图片origin");
 
-        addCanvasBtnItem(addCanvasBtn);
-        addConvexBtnItem(addConvexBtn);
-        addDoubleBtnItem(addDoubleBtn);
-        addFloatBtnItem(addFloatBtn);
-        addIntBtnItem(addIntBtn);
-        addListBtnItem(addListBtn);
-        addLongBtnItem(addLongBtn);
-        addNullBtnItem(addNullBtn);
-        addShortBtnItem(addShortBtn);
-        addSoundBtnItem(addSoundBtn);
-        addStringBtnItem(addStringBtn);
-        addUOLBtnItem(addUOLBtn);
-        addVectorBtnItem(addVectorBtn);
+        addCanvasBtn.addActionListener(e -> editPane.addCanvas());
+        addConvexBtn.addActionListener(e -> editPane.addConvex());
+        addDoubleBtn.addActionListener(e -> editPane.addDouble());
+        addFloatBtn.addActionListener(e -> editPane.addFloat());
+        addIntBtn.addActionListener(e -> editPane.addInt());
+        addListBtn.addActionListener(e -> editPane.addList());
+        addLongBtn.addActionListener(e -> editPane.addLong());
+        addNullBtn.addActionListener(e -> editPane.addNull());
+        addShortBtn.addActionListener(e -> editPane.addShort());
+        addSoundBtn.addActionListener(e -> editPane.addSound());
+        addStringBtn.addActionListener(e -> editPane.addString());
+        addUOLBtn.addActionListener(e -> editPane.addUOL());
+        addVectorBtn.addActionListener(e -> editPane.addVector());
         copyBtn.addActionListener(e -> editPane.doCopy());
         pasteBtn.addActionListener(e -> editPane.doPaste());
-        deleteBtnAction(deleteBtn);
-        addChineseBtnAction(chineseBtn);
+        deleteBtn.addActionListener(e -> editPane.delete());
+        chineseBtn.addActionListener(e -> editPane.localizeString());
         compareImgBtn.addActionListener(e -> editPane.compareImg());
-        addImageBtnAction(imageBtn);
-        addOutlinkBtnAction(outlinkBtn);
+        imageFinderBtn.addActionListener(e -> editPane.imageFinder());
+        outlinkBtn.addActionListener(e -> editPane.outlink());
         sicBtn.addActionListener(e -> editPane.sortAndReindexChildren());
         delChild.addActionListener(e -> editPane.removeAllWzChildWithName());
         changeCavFmt.addActionListener(e -> editPane.changeCavFmt());
@@ -119,7 +101,7 @@ public final class WzListPropertyMenu extends JPopupMenu {
         add(deleteBtn);
         add(chineseBtn);
         add(compareImgBtn);
-        add(imageBtn);
+        add(imageFinderBtn);
         add(outlinkBtn);
         add(sicBtn);
         add(delChild);
@@ -129,604 +111,5 @@ public final class WzListPropertyMenu extends JPopupMenu {
         add(changeIntNodeValue);
         add(rawToIcon);
         add(changeOriginValue);
-    }
-
-    private void deleteBtnAction(JMenuItem item) {
-        item.addActionListener(e -> {
-            TreePath[] selectedPaths = tree.getSelectionPaths();
-            if (selectedPaths == null) return;
-
-            for (TreePath treePath : selectedPaths) {
-                DefaultMutableTreeNode node = (DefaultMutableTreeNode) treePath.getLastPathComponent();
-                WzObject wzObject = (WzObject) node.getUserObject();
-                WzObject pWzObject = wzObject.getParent();
-
-                if (pWzObject instanceof WzImage image && image.removeChild(wzObject.getName())) {
-                    editPane.removeNodeFromTree((DefaultMutableTreeNode) treePath.getLastPathComponent());
-                } else if (pWzObject instanceof WzImageProperty property && property.removeChild(wzObject.getName())) {
-                    editPane.removeNodeFromTree((DefaultMutableTreeNode) treePath.getLastPathComponent());
-                } else {
-                    log.error("无法删除节点, 父节点类型: {}", pWzObject.getClass().getSimpleName());
-                }
-            }
-            editPane.resetValueForm();
-        });
-    }
-
-    private void addCanvasBtnItem(JMenuItem item) {
-        item.addActionListener(e -> {
-            TreePath[] selectedPaths = tree.getSelectionPaths();
-            if (selectedPaths == null) return;
-
-            if (selectedPaths.length != 1) {
-                JMessageUtil.error("不要多选");
-                return;
-            }
-
-            DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
-
-            CanvasDialog nodeDialog = new CanvasDialog("新增 Canvas", editPane);
-            CanvasFormData data = nodeDialog.getData();
-
-            if (data == null) return;
-
-            String name = data.getName();
-
-            if (name.isEmpty()) {
-                JMessageUtil.error("名称不能为空");
-                return;
-            }
-
-            WzImageProperty imageProperty = (WzImageProperty) node.getUserObject();
-
-            WzCanvasProperty prop = new WzCanvasProperty(name, imageProperty, imageProperty.getWzImage());
-            if (!imageProperty.addChild(prop)) {
-                JMessageUtil.error("名称已存在");
-                return;
-            }
-            prop.initPngProperty(name, prop, imageProperty.getWzImage());
-            prop.setPng(data.getValue(), data.getFormat(), data.getScale());
-
-            if (node.isLeaf()) return; // isLeaf 说明未加载数据，就不要插入了
-            prop.setTempChanged(true);
-            editPane.insertNodeToTree(node, prop, true, 0);
-        });
-    }
-
-    private void addConvexBtnItem(JMenuItem item) {
-        item.addActionListener(e -> {
-            TreePath[] selectedPaths = tree.getSelectionPaths();
-            if (selectedPaths == null) return;
-
-            if (selectedPaths.length != 1) {
-                JMessageUtil.error("不要多选");
-                return;
-            }
-
-            DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
-
-            NodeDialog nodeDialog = new NodeDialog("新增 Convex", editPane);
-            NodeFormData data = nodeDialog.getData();
-
-            if (data == null) return;
-
-            String name = data.getName();
-
-            if (name.isEmpty()) {
-                JMessageUtil.error("名称不能为空");
-                return;
-            }
-
-            WzImageProperty imageProperty = (WzImageProperty) node.getUserObject();
-
-            WzConvexProperty prop = new WzConvexProperty(name, imageProperty, imageProperty.getWzImage());
-            if (!imageProperty.addChild(prop)) {
-                JMessageUtil.error("名称已存在");
-                return;
-            }
-
-            if (node.isLeaf()) return; // isLeaf 说明未加载数据，就不要插入了
-            prop.setTempChanged(true);
-            editPane.insertNodeToTree(node, prop, true, 0);
-        });
-    }
-
-    private void addDoubleBtnItem(JMenuItem item) {
-        item.addActionListener(e -> {
-            TreePath[] selectedPaths = tree.getSelectionPaths();
-            if (selectedPaths == null) return;
-
-            if (selectedPaths.length != 1) {
-                JMessageUtil.error("不要多选");
-                return;
-            }
-
-            DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
-
-            DoubleDialog nodeDialog = new DoubleDialog("新增 Double", editPane);
-            DoubleFormData data = nodeDialog.getData();
-
-            if (data == null) return;
-
-            String name = data.getName();
-
-            if (name.isEmpty()) {
-                JMessageUtil.error("名称不能为空");
-                return;
-            }
-
-            WzImageProperty imageProperty = (WzImageProperty) node.getUserObject();
-
-            WzDoubleProperty prop = new WzDoubleProperty(name, data.getValue(), imageProperty, imageProperty.getWzImage());
-            if (!imageProperty.addChild(prop)) {
-                JMessageUtil.error("名称已存在");
-                return;
-            }
-
-            if (node.isLeaf()) return; // isLeaf 说明未加载数据，就不要插入了
-            prop.setTempChanged(true);
-            editPane.insertNodeToTree(node, prop, true, 0);
-        });
-    }
-
-    private void addFloatBtnItem(JMenuItem item) {
-        item.addActionListener(e -> {
-            TreePath[] selectedPaths = tree.getSelectionPaths();
-            if (selectedPaths == null) return;
-
-            if (selectedPaths.length != 1) {
-                JMessageUtil.error("不要多选");
-                return;
-            }
-
-            DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
-
-            FloatDialog nodeDialog = new FloatDialog("新增 Float", editPane);
-            FloatFormData data = nodeDialog.getData();
-
-            if (data == null) return;
-
-            String name = data.getName();
-
-            if (name.isEmpty()) {
-                JMessageUtil.error("名称不能为空");
-                return;
-            }
-
-            WzImageProperty imageProperty = (WzImageProperty) node.getUserObject();
-
-            WzFloatProperty prop = new WzFloatProperty(name, data.getValue(), imageProperty, imageProperty.getWzImage());
-            if (!imageProperty.addChild(prop)) {
-                JMessageUtil.error("名称已存在");
-                return;
-            }
-
-            if (node.isLeaf()) return; // isLeaf 说明未加载数据，就不要插入了
-            prop.setTempChanged(true);
-            editPane.insertNodeToTree(node, prop, true, 0);
-        });
-    }
-
-    private void addIntBtnItem(JMenuItem item) {
-        item.addActionListener(e -> {
-            TreePath[] selectedPaths = tree.getSelectionPaths();
-            if (selectedPaths == null) return;
-
-            if (selectedPaths.length != 1) {
-                JMessageUtil.error("不要多选");
-                return;
-            }
-
-            DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
-
-            IntDialog nodeDialog = new IntDialog("新增 Int", editPane);
-            IntFormData data = nodeDialog.getData();
-
-            if (data == null) return;
-
-            String name = data.getName();
-
-            if (name.isEmpty()) {
-                JMessageUtil.error("名称不能为空");
-                return;
-            }
-
-            WzImageProperty imageProperty = (WzImageProperty) node.getUserObject();
-
-            WzIntProperty prop = new WzIntProperty(name, data.getValue(), imageProperty, imageProperty.getWzImage());
-            if (!imageProperty.addChild(prop)) {
-                JMessageUtil.error("名称已存在");
-                return;
-            }
-
-            if (node.isLeaf()) return; // isLeaf 说明未加载数据，就不要插入了
-            prop.setTempChanged(true);
-            editPane.insertNodeToTree(node, prop, true, 0);
-        });
-    }
-
-    private void addListBtnItem(JMenuItem item) {
-        item.addActionListener(e -> {
-            TreePath[] selectedPaths = tree.getSelectionPaths();
-            if (selectedPaths == null) return;
-
-            if (selectedPaths.length != 1) {
-                JMessageUtil.error("不要多选");
-                return;
-            }
-
-            DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
-
-            NodeDialog nodeDialog = new NodeDialog("新增 List", editPane);
-            NodeFormData data = nodeDialog.getData();
-
-            if (data == null) return;
-
-            String name = data.getName();
-
-            if (name.isEmpty()) {
-                JMessageUtil.error("名称不能为空");
-                return;
-            }
-
-            WzImageProperty imageProperty = (WzImageProperty) node.getUserObject();
-
-            WzListProperty prop = new WzListProperty(name, imageProperty, imageProperty.getWzImage());
-            if (!imageProperty.addChild(prop)) {
-                JMessageUtil.error("名称已存在");
-                return;
-            }
-
-            if (node.isLeaf()) return; // isLeaf 说明未加载数据，就不要插入了
-            prop.setTempChanged(true);
-            editPane.insertNodeToTree(node, prop, true, 0);
-        });
-    }
-
-    private void addLongBtnItem(JMenuItem item) {
-        item.addActionListener(e -> {
-            TreePath[] selectedPaths = tree.getSelectionPaths();
-            if (selectedPaths == null) return;
-
-            if (selectedPaths.length != 1) {
-                JMessageUtil.error("不要多选");
-                return;
-            }
-
-            DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
-
-            LongDialog nodeDialog = new LongDialog("新增 Long", editPane);
-            LongFormData data = nodeDialog.getData();
-
-            if (data == null) return;
-
-            String name = data.getName();
-
-            if (name.isEmpty()) {
-                JMessageUtil.error("名称不能为空");
-                return;
-            }
-
-            WzImageProperty imageProperty = (WzImageProperty) node.getUserObject();
-
-            WzLongProperty prop = new WzLongProperty(name, data.getValue(), imageProperty, imageProperty.getWzImage());
-            if (!imageProperty.addChild(prop)) {
-                JMessageUtil.error("名称已存在");
-                return;
-            }
-
-            if (node.isLeaf()) return; // isLeaf 说明未加载数据，就不要插入了
-            prop.setTempChanged(true);
-            editPane.insertNodeToTree(node, prop, true, 0);
-        });
-    }
-
-    private void addNullBtnItem(JMenuItem item) {
-        item.addActionListener(e -> {
-            TreePath[] selectedPaths = tree.getSelectionPaths();
-            if (selectedPaths == null) return;
-
-            if (selectedPaths.length != 1) {
-                JMessageUtil.error("不要多选");
-                return;
-            }
-
-            DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
-
-            NodeDialog nodeDialog = new NodeDialog("新增 Null", editPane);
-            NodeFormData data = nodeDialog.getData();
-
-            if (data == null) return;
-
-            String name = data.getName();
-
-            if (name.isEmpty()) {
-                JMessageUtil.error("名称不能为空");
-                return;
-            }
-
-            WzImageProperty imageProperty = (WzImageProperty) node.getUserObject();
-
-            WzNullProperty prop = new WzNullProperty(name, imageProperty, imageProperty.getWzImage());
-            if (!imageProperty.addChild(prop)) {
-                JMessageUtil.error("名称已存在");
-                return;
-            }
-
-            if (node.isLeaf()) return; // isLeaf 说明未加载数据，就不要插入了
-            prop.setTempChanged(true);
-            editPane.insertNodeToTree(node, prop, true, 0);
-        });
-    }
-
-    private void addShortBtnItem(JMenuItem item) {
-        item.addActionListener(e -> {
-            TreePath[] selectedPaths = tree.getSelectionPaths();
-            if (selectedPaths == null) return;
-
-            if (selectedPaths.length != 1) {
-                JMessageUtil.error("不要多选");
-                return;
-            }
-
-            DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
-
-            ShortDialog nodeDialog = new ShortDialog("新增 Short", editPane);
-            ShortFormData data = nodeDialog.getData();
-
-            if (data == null) return;
-
-            String name = data.getName();
-
-            if (name.isEmpty()) {
-                JMessageUtil.error("名称不能为空");
-                return;
-            }
-
-            WzImageProperty imageProperty = (WzImageProperty) node.getUserObject();
-
-            WzShortProperty prop = new WzShortProperty(name, data.getValue(), imageProperty, imageProperty.getWzImage());
-            if (!imageProperty.addChild(prop)) {
-                JMessageUtil.error("名称已存在");
-                return;
-            }
-
-            if (node.isLeaf()) return; // isLeaf 说明未加载数据，就不要插入了
-            prop.setTempChanged(true);
-            editPane.insertNodeToTree(node, prop, true, 0);
-        });
-    }
-
-    private void addSoundBtnItem(JMenuItem item) {
-        item.addActionListener(e -> {
-            TreePath[] selectedPaths = tree.getSelectionPaths();
-            if (selectedPaths == null) return;
-
-            if (selectedPaths.length != 1) {
-                JMessageUtil.error("不要多选");
-                return;
-            }
-
-            DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
-
-            SoundDialog nodeDialog = new SoundDialog("新增 Sound", editPane);
-            SoundFormData data = nodeDialog.getData();
-
-            if (data == null) return;
-
-            String name = data.getName();
-
-            if (name.isEmpty()) {
-                JMessageUtil.error("名称不能为空");
-                return;
-            }
-
-            WzImageProperty imageProperty = (WzImageProperty) node.getUserObject();
-
-            WzSoundProperty prop = new WzSoundProperty(name, imageProperty, imageProperty.getWzImage());
-            prop.setSound(data.getSoundBytes());
-            if (!imageProperty.addChild(prop)) {
-                JMessageUtil.error("名称已存在");
-                return;
-            }
-
-            if (node.isLeaf()) return; // isLeaf 说明未加载数据，就不要插入了
-            prop.setTempChanged(true);
-            editPane.insertNodeToTree(node, prop, true, 0);
-        });
-    }
-
-    private void addStringBtnItem(JMenuItem item) {
-        item.addActionListener(e -> {
-            TreePath[] selectedPaths = tree.getSelectionPaths();
-            if (selectedPaths == null) return;
-
-            if (selectedPaths.length != 1) {
-                JMessageUtil.error("不要多选");
-                return;
-            }
-
-            DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
-
-            StringDialog nodeDialog = new StringDialog("新增 String", editPane);
-            StringFormData data = nodeDialog.getData();
-
-            if (data == null) return;
-
-            String name = data.getName();
-
-            if (name.isEmpty()) {
-                JMessageUtil.error("名称不能为空");
-                return;
-            }
-
-            WzImageProperty imageProperty = (WzImageProperty) node.getUserObject();
-
-            WzStringProperty prop = new WzStringProperty(name, data.getValue(), imageProperty, imageProperty.getWzImage());
-            if (!imageProperty.addChild(prop)) {
-                JMessageUtil.error("名称已存在");
-                return;
-            }
-
-            if (node.isLeaf()) return; // isLeaf 说明未加载数据，就不要插入了
-            prop.setTempChanged(true);
-            editPane.insertNodeToTree(node, prop, true, 0);
-        });
-    }
-
-    private void addUOLBtnItem(JMenuItem item) {
-        item.addActionListener(e -> {
-            TreePath[] selectedPaths = tree.getSelectionPaths();
-            if (selectedPaths == null) return;
-
-            if (selectedPaths.length != 1) {
-                JMessageUtil.error("不要多选");
-                return;
-            }
-
-            DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
-
-            StringDialog nodeDialog = new StringDialog("新增 UOL", editPane);
-            StringFormData data = nodeDialog.getData();
-
-            if (data == null) return;
-
-            String name = data.getName();
-
-            if (name.isEmpty()) {
-                JMessageUtil.error("名称不能为空");
-                return;
-            }
-
-            WzImageProperty imageProperty = (WzImageProperty) node.getUserObject();
-
-            WzUOLProperty prop = new WzUOLProperty(name, data.getValue(), imageProperty, imageProperty.getWzImage());
-            if (!imageProperty.addChild(prop)) {
-                JMessageUtil.error("名称已存在");
-                return;
-            }
-
-            if (node.isLeaf()) return; // isLeaf 说明未加载数据，就不要插入了
-            prop.setTempChanged(true);
-            editPane.insertNodeToTree(node, prop, true, 0);
-        });
-    }
-
-    private void addVectorBtnItem(JMenuItem item) {
-        item.addActionListener(e -> {
-            TreePath[] selectedPaths = tree.getSelectionPaths();
-            if (selectedPaths == null) return;
-
-            if (selectedPaths.length != 1) {
-                JMessageUtil.error("不要多选");
-                return;
-            }
-
-            DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
-
-            VectorDialog nodeDialog = new VectorDialog("新增 Vector", editPane);
-            VectorFormData data = nodeDialog.getData();
-
-            if (data == null) return;
-
-            String name = data.getName();
-
-            if (name.isEmpty()) {
-                JMessageUtil.error("名称不能为空");
-                return;
-            }
-
-            WzImageProperty imageProperty = (WzImageProperty) node.getUserObject();
-
-            WzVectorProperty prop = new WzVectorProperty(name, data.getX(), data.getY(), imageProperty, imageProperty.getWzImage());
-            if (!imageProperty.addChild(prop)) {
-                JMessageUtil.error("名称已存在");
-                return;
-            }
-
-            if (node.isLeaf()) return; // isLeaf 说明未加载数据，就不要插入了
-            prop.setTempChanged(true);
-            editPane.insertNodeToTree(node, prop, true, 0);
-        });
-    }
-
-    private void addChineseBtnAction(JMenuItem item) {
-        item.addActionListener(e -> {
-            Instant start = Instant.now();
-            TreePath[] selectedPaths = tree.getSelectionPaths();
-            if (selectedPaths == null) return;
-
-            for (TreePath treePath : selectedPaths) {
-                DefaultMutableTreeNode node = (DefaultMutableTreeNode) treePath.getLastPathComponent();
-                WzImageProperty to = (WzImageProperty) node.getUserObject();
-
-                WzImageProperty from = (WzImageProperty) MainFrame.getInstance().getCenterPane().getAnotherPane(editPane).findWzObjectInTreeByPath(to.getPath());
-                if (from == null) {
-                    log.error("找不到中文版本的 {}", to.getName());
-                    continue;
-                }
-
-                ChineseUtil.chinese(from, to);
-            }
-
-            Instant end = Instant.now();
-            Duration duration = Duration.between(start, end);
-            MainFrame.getInstance().setStatusText("汉化完成! 耗时 %d ms", duration.toMillis());
-        });
-    }
-
-    private void addImageBtnAction(JMenuItem item) {
-        item.addActionListener(e -> {
-            TreePath[] selectedPaths = tree.getSelectionPaths();
-            if (selectedPaths == null) return;
-
-            if (selectedPaths.length != 1) {
-                JMessageUtil.error("该功能不支持多选");
-                return;
-            }
-
-            DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectedPaths[0].getLastPathComponent();
-            WzImageProperty prop = (WzImageProperty) node.getUserObject();
-            List<CanvasUtilData> data = new ArrayList<>();
-            CanvasUtil.search(data, prop.getChildren());
-
-            CanvasWall canvasWall = new CanvasWall(data, prop.getPath(), node, editPane);
-            canvasWall.setVisible(true);
-        });
-    }
-
-    private void addOutlinkBtnAction(JMenuItem item) {
-        item.addActionListener(e -> {
-            Instant now = Instant.now();
-            TreePath[] selectedPaths = tree.getSelectionPaths();
-            if (selectedPaths == null) return;
-
-            List<WzObject> objects = new ArrayList<>();
-            for (TreePath treePath : selectedPaths) {
-                DefaultMutableTreeNode node = (DefaultMutableTreeNode) treePath.getLastPathComponent();
-                WzObject wzObject = (WzObject) node.getUserObject();
-                objects.add(wzObject);
-            }
-
-            SwingWorker<Void, Void> worker = new SwingWorker<>() {
-                @Override
-                protected Void doInBackground() {
-                    Outlink.replace(objects);
-                    return null;
-                }
-
-                @Override
-                protected void done() {
-                    try {
-                        get();
-                        Instant end = Instant.now();
-                        MainFrame.getInstance().setStatusText("Outlink 结束，耗时 %d 秒", Duration.between(now, end).toSeconds());
-                    } catch (Exception ex) {
-                        throw new RuntimeException(ex);
-                    }
-                }
-            };
-            worker.execute();
-        });
     }
 }

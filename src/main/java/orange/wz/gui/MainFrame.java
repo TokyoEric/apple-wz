@@ -16,7 +16,6 @@ import orange.wz.gui.utils.UrlUtil;
 import orange.wz.manager.ServerManager;
 import orange.wz.provider.tools.wzkey.WzKey;
 import orange.wz.provider.tools.wzkey.WzKeyStorage;
-import org.springframework.context.MessageSource;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -326,6 +325,13 @@ public class MainFrame extends JFrame {
         if (statusLabel != null) {
             statusLabel.setText(format);
         }
+    }
+
+    public void setStatusTextWithErrLog(String message) {
+        if (statusLabel != null) {
+            statusLabel.setText(message);
+        }
+        log.error(message);
     }
 
     private void gc() {

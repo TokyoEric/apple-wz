@@ -5,6 +5,7 @@ import orange.wz.gui.MainFrame;
 import orange.wz.gui.component.FileDialog;
 import orange.wz.gui.component.panel.EditPane;
 import orange.wz.gui.utils.JMessageUtil;
+import orange.wz.gui.utils.TreePathUtil;
 import orange.wz.provider.*;
 
 import javax.swing.*;
@@ -21,12 +22,10 @@ import static orange.wz.gui.Icons.*;
 
 @Slf4j
 public final class WzFolderMenu extends JPopupMenu {
-    private final EditPane editPane;
     private final JTree tree;
 
     public WzFolderMenu(EditPane editPane, JTree tree) {
         super();
-        this.editPane = editPane;
         this.tree = tree;
 
         JMenuItem saveBtn = new JMenuItem(MainFrame.i18n.get("save"), AiOutlineSaveIcon);
@@ -40,13 +39,13 @@ public final class WzFolderMenu extends JPopupMenu {
         exportBtn.add(exportImgBtn);
         exportBtn.add(exportXmlBtn);
 
-        saveBtnAction(saveBtn);
+        saveBtn.addActionListener(e -> editPane.save());
         packageBtnAction(packageBtn);
         unloadBtn.addActionListener(e -> editPane.unload());
-        reloadBtnAction(reloadBtn);
-        addKeyBtnAction(keyBtn);
-        addExportImgBtnAction(exportImgBtn);
-        addExportXmlBtnAction(exportXmlBtn);
+        reloadBtn.addActionListener(e -> editPane.reloadFile());
+        keyBtn.addActionListener(e -> editPane.changeKey());
+        exportImgBtn.addActionListener(e -> editPane.exportImg());
+        exportXmlBtn.addActionListener(e -> editPane.exportXml());
 
         add(saveBtn);
         add(packageBtn);
@@ -56,23 +55,11 @@ public final class WzFolderMenu extends JPopupMenu {
         add(exportBtn);
     }
 
-    private void saveBtnAction(JMenuItem item) {
-        item.addActionListener(e -> {
-            TreePath[] selectedPaths = tree.getSelectionPaths();
-            if (selectedPaths == null) return;
-
-            editPane.saveFiles(selectedPaths);
-        });
-    }
-
     private void packageBtnAction(JMenuItem item) {
         item.addActionListener(e -> {
             TreePath[] selectedPaths = tree.getSelectionPaths();
-            if (selectedPaths == null) return;
-            if (selectedPaths.length != 1) {
-                JMessageUtil.error("右键文件夹使用打包功能，不要多选！");
-                return;
-            }
+            if (TreePathUtil.isNullOrMultiple(selectedPaths)) return;
+
             Short fileVersion = null;
             while (fileVersion == null) {
                 String input = JOptionPane.showInputDialog("版本号(79、83等)：");
@@ -138,15 +125,6 @@ public final class WzFolderMenu extends JPopupMenu {
         });
     }
 
-    private void reloadBtnAction(JMenuItem item) {
-        item.addActionListener(e -> {
-            TreePath[] selectedPaths = tree.getSelectionPaths();
-            if (selectedPaths == null) return;
-
-            editPane.reloadFile(selectedPaths);
-        });
-    }
-
     // 打包 -------------------------------------------------------------------------------------------------------------
     private void packageBase(short fileVersion, WzFolder wzFolder, String savePath) {
         Set<String> directories = new HashSet<>();
@@ -204,32 +182,5 @@ public final class WzFolderMenu extends JPopupMenu {
             }
             MainFrame.getInstance().updateProgress(++current, total);
         }
-    }
-
-    private void addKeyBtnAction(JMenuItem item) {
-        item.addActionListener(e -> {
-            TreePath[] selectedPaths = tree.getSelectionPaths();
-            if (selectedPaths == null) return;
-
-            editPane.changeKey(selectedPaths);
-        });
-    }
-
-    private void addExportImgBtnAction(JMenuItem item) {
-        item.addActionListener(e -> {
-            TreePath[] selectedPaths = tree.getSelectionPaths();
-            if (selectedPaths == null) return;
-
-            editPane.exportImg(selectedPaths);
-        });
-    }
-
-    private void addExportXmlBtnAction(JMenuItem item) {
-        item.addActionListener(e -> {
-            TreePath[] selectedPaths = tree.getSelectionPaths();
-            if (selectedPaths == null) return;
-
-            editPane.exportXml(selectedPaths);
-        });
     }
 }
