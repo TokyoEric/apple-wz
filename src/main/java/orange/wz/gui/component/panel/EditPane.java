@@ -1592,7 +1592,7 @@ public final class EditPane extends JSplitPane {
         } else if (oldObject instanceof WzDirectory wzDir && wzDir.isWzFile()) {
             if (wzDir.getWzFile().isNewFile()) {
                 JMessageUtil.error(MainFrame.i18n.get("error.try_reload_new_file"));
-                return;
+                return null;
             }
             WzFile oldWzFile = wzDir.getWzFile();
             String filePath = oldWzFile.getFilePath();
@@ -1601,7 +1601,7 @@ public final class EditPane extends JSplitPane {
         } else if (oldObject instanceof WzImageFile oldImg) {
             if (oldImg.isNewFile()) {
                 JMessageUtil.error(MainFrame.i18n.get("error.try_reload_new_file"));
-                return;
+                return null;
             }
             Path filePath = Path.of(oldImg.getFilePath());
             String filename = filePath.getFileName().toString();

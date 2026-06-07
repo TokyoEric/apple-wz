@@ -15,18 +15,18 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         // 处理Vue路由的SPA特性
-        registry.addResourceHandler("/**")
-                .addResourceLocations("classpath:/static/")
-                .resourceChain(true)
-                .addResolver(new PathResourceResolver() {
-                    @Override
-                    protected Resource getResource(@Nonnull String resourcePath, @Nonnull Resource location) throws IOException {
-                        Resource requestedResource = location.createRelative(resourcePath);
-                        // 如果请求的文件不存在，返回index.html
-                        return requestedResource.exists() && requestedResource.isReadable() ?
-                                requestedResource :
-                                location.createRelative("index.html");
-                    }
-                });
+        // registry.addResourceHandler("/**")
+        //         .addResourceLocations("classpath:/static/")
+        //         .resourceChain(true)
+        //         .addResolver(new PathResourceResolver() {
+        //             @Override
+        //             protected Resource getResource(@Nonnull String resourcePath, @Nonnull Resource location) throws IOException {
+        //                 Resource requestedResource = location.createRelative(resourcePath);
+        //                 // 如果请求的文件不存在，返回index.html
+        //                 return requestedResource.exists() && requestedResource.isReadable() ?
+        //                         requestedResource :
+        //                         location.createRelative("index.html");
+        //             }
+        //         });
     }
 }

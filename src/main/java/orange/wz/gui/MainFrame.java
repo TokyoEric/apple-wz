@@ -314,7 +314,7 @@ public class MainFrame extends JFrame {
      *
      * @param message 文字
      */
-    public void setStatusText(String message, Object... args) {
+    public void setStatusText(String message) {
         if (statusLabel != null) {
             statusLabel.setText(message);
         }

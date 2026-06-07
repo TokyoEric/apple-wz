@@ -68,7 +68,7 @@ public final class McpUiBridge {
             prepareNodeTargets(leftPane(), arguments);
             MainFrame frame = frame();
             frame.updateProgress(0, 0);
-            frame.setStatusTextDirect(message);
+            frame.setStatusText(message);
         });
     }
 
@@ -131,7 +131,7 @@ public final class McpUiBridge {
                 }
             }
             frame.updateProgress(0, 0);
-            frame.setStatusTextDirect(successMessage(toolName, result));
+            frame.setStatusText(successMessage(toolName, result));
             editPane.getTree().updateUI();
         });
     }
