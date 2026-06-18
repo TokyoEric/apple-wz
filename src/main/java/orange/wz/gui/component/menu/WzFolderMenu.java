@@ -18,6 +18,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static orange.wz.gui.Icons.FcFolderIcon;
 import static orange.wz.gui.Icons.FiPackage;
 
 @Slf4j
@@ -31,12 +32,16 @@ public final class WzFolderMenu extends TreeMenu {
         JMenuItem btnPackage = new JMenuItem(MainFrame.i18n.get("test.temp0127"), FiPackage);
         btnPackage.addActionListener(e -> packageBtnAction());
 
+        JMenuItem btnLoadAll = new JMenuItem(MainFrame.i18n.get("loadAll"), FcFolderIcon);
+        btnLoadAll.addActionListener(e -> loadAll());
+
         add(btnSave);
         add(btnPackage);
         add(btnUnload);
         add(btnReload);
         add(btnChangeKey);
         add(btnExport);
+        add(btnLoadAll);
     }
 
     private void packageBtnAction() {
@@ -162,6 +167,22 @@ public final class WzFolderMenu extends TreeMenu {
                 parent.addChild(xmlFile);
             }
             MainFrame.getInstance().updateProgress(++current, total);
+        }
+    }
+
+    private void loadAll() {
+        TreePath[] selectedPaths = tree.getSelectionPaths();
+        if (selectedPaths == null) return;
+
+        for (TreePath treePath : selectedPaths) {
+            DefaultMutableTreeNode node = (DefaultMutableTreeNode) treePath.getLastPathComponent();
+            if (node.getUserObject() instanceof WzFolder folder) {
+                if (folder.countChildren() > 0) {
+                    JMessageUtil.error(MainFrame.i18n.get("test.temp0176", folder.getName()));
+                } else {
+                    folder.loadFolder(true);
+                }
+            }
         }
     }
 }
