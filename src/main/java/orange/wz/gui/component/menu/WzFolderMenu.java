@@ -170,6 +170,18 @@ public final class WzFolderMenu extends TreeMenu {
         }
     }
 
+    private void loadFolder(WzFolder folder) {
+        if (folder.countChildren() > 0) {
+            for (WzObject obj : folder.getChildren()) {
+                if (obj instanceof WzFolder subFolder) {
+                    loadFolder(subFolder);
+                }
+            }
+        } else {
+            folder.loadFolder(true);
+        }
+    }
+
     private void loadAll() {
         TreePath[] selectedPaths = tree.getSelectionPaths();
         if (selectedPaths == null) return;
@@ -177,11 +189,7 @@ public final class WzFolderMenu extends TreeMenu {
         for (TreePath treePath : selectedPaths) {
             DefaultMutableTreeNode node = (DefaultMutableTreeNode) treePath.getLastPathComponent();
             if (node.getUserObject() instanceof WzFolder folder) {
-                if (folder.countChildren() > 0) {
-                    JMessageUtil.error(MainFrame.i18n.get("test.temp0176", folder.getName()));
-                } else {
-                    folder.loadFolder(true);
-                }
+                loadFolder(folder);
             }
         }
     }
