@@ -22,7 +22,7 @@
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <!-- 按月目录 + 启动时间戳 -->
             <fileNamePattern>
-                ${LOG_PATH}/%d{yyyy-MM}/OrzRepacker-%d{yyyy-MM-dd_HH-mm-ss}.log
+                ${LOG_PATH}/%d{yyyy-MM}/TokyoRepacker-%d{yyyy-MM-dd_HH-mm-ss}.log
             </fileNamePattern>
         </rollingPolicy>
 

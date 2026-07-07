@@ -78,7 +78,7 @@ public class MainFrame extends JFrame {
             UIManager.setLookAndFeel(new FlatLightLaf());
         } catch (Exception ignored) {
         }
-        setTitle("OrzRepacker");
+        setTitle("TokyoRepacker");
         setSize(1024, 768);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -274,7 +274,7 @@ public class MainFrame extends JFrame {
         rightPanel.add(Box.createHorizontalStrut(10)); // 间距
 
         // 当前版本
-        JLabel versionLabel = new JLabel("OrzRepacker " + ServerManager.getVersion());
+        JLabel versionLabel = new JLabel("TokyoRepacker " + ServerManager.getVersion());
         rightPanel.add(versionLabel);
 
         // 添加到右侧
@@ -359,7 +359,7 @@ public class MainFrame extends JFrame {
 
                     String urlStr = String.format(
                             "https://moguwuyu.com/api/checkUpdate?name=%s&version=%s&timestamp=%d&token=%s",
-                            "OrzRepacker", version, timestamp, token
+                            "TokyoRepacker", version, timestamp, token
                     );
 
                     String response;
@@ -396,7 +396,7 @@ public class MainFrame extends JFrame {
     private String requestByCurl(String urlStr) throws IOException, InterruptedException {
         ProcessBuilder pb = new ProcessBuilder(
                 "curl", "-s", "-L",
-                "-H", "User-Agent: OrzRepacker/1.0",
+                "-H", "User-Agent: TokyoRepacker/1.0",
                 urlStr
         );
         pb.redirectErrorStream(true);

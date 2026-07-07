@@ -75,7 +75,7 @@
     </dependencies>
 
     <build>
-        <finalName>OrzRepacker</finalName> <!-- 打包文件不带版本号 -->
+        <finalName>TokyoRepacker</finalName> <!-- 打包文件不带版本号 -->
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
