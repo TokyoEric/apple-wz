@@ -44,3 +44,5 @@ build/
 /logs/
 config.inireleases/
 releases/
+cp.txt
+docs/
