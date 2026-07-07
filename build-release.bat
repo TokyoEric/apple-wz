@@ -1,39 +1,41 @@
 @echo off
-REM TokyoRepacker 一键构建脚本
-REM 编译 + Launch4j 打包 EXE + 发行版
-
+chcp 65001 >nul
 set JAVA_HOME=D:\Java\jdk-21.0.2
 set PATH=%JAVA_HOME%\bin;%PATH%
 set MVN=C:\Users\ADMIN\.m2\wrapper\dists\apache-maven-3.9.11\03d7e36a140982eea48e22c1dcac01d8862b2550b2939e09a0809bbc5182a5bc\bin\mvn.cmd
+set PROJ=%~dp0
+set TARGET=%PROJ%target
+set OUTPUT=D:\TokyoRepacker
+set L4J=%USERPROFILE%\.m2\repository\net\sf\launch4j\launch4j\3.50
 
-echo === [1/3] Maven 编译+Launch4j打包EXE ===
-call %MVN% clean package ^
-  -Dmaven.compiler.release= ^
-  -Dmaven.compiler.source=21 ^
-  -Dmaven.compiler.target=21 ^
-  -DskipTests
-if %ERRORLEVEL% neq 0 (
-  echo 编译失败，退出
-  exit /b 1
+echo [1/4] Maven package...
+cd /d "%PROJ%"
+call %MVN% clean package -Dmaven.compiler.release= -Dmaven.compiler.source=21 -Dmaven.compiler.target=21 -DskipTests -q
+if %ERRORLEVEL% neq 0 exit /b 1
+
+echo [2/4] Launch4j 创建启动器...
+copy /y "%TARGET%\TokyoRepacker.jar" "%TARGET%\data.bin" >nul
+java -cp "%L4J%\launch4j-3.50-core.jar;%L4J%\launch4j-3.50-workdir-win32.jar" net.sf.launch4j.Main "%PROJ%launch4j.xml" >nul
+if %ERRORLEVEL% neq 0 echo Launch4j FAIL && exit /b 1
+
+echo [3/4] 复制到 D:\TokyoRepacker...
+rmdir /s /q "%OUTPUT%" 2>nul
+mkdir "%OUTPUT%"
+copy "%TARGET%\TokyoRepacker.exe" "%OUTPUT%\" >nul
+copy "%TARGET%\data.bin" "%OUTPUT%\" >nul
+copy "%PROJ%libcrypto-3-x64.dll" "%OUTPUT%\" >nul
+echo language = zh_CN > "%OUTPUT%\config.ini"
+if exist "%TARGET%\jre" xcopy /e /i /y "%TARGET%\jre" "%OUTPUT%\jre\" >nul
+
+echo [4/4] 打包 ZIP...
+if exist "C:\Program Files\7-Zip\7z.exe" (
+  "C:\Program Files\7-Zip\7z.exe" a -tzip "%TARGET%\TokyoRepacker-v1.0.0-Beta.zip" "%OUTPUT%\*" -y >nul
 )
+echo OK
 
-echo === [2/3] 复制发行版到 D:\TokyoRepacker ===
-rmdir /s /q D:\TokyoRepacker 2>nul
-mkdir D:\TokyoRepacker
-copy target\TokyoRepacker.exe D:\TokyoRepacker\
-if exist libcrypto-3-x64.dll copy libcrypto-3-x64.dll D:\TokyoRepacker\
-echo language = zh_CN > D:\TokyoRepacker\config.ini
-
-echo === [3/3] 打包 ZIP ===
-set SZIP="C:\Program Files\7-Zip\7z.exe"
-if exist %SZIP% (
-  %SZIP% a -tzip target\TokyoRepacker-v1.0.0-Beta.zip D:\TokyoRepacker\* -y
-) else (
-  echo 7z 未找到，跳过打包
-)
-
-echo === 完成 ===
-echo 发行版: D:\TokyoRepacker
-echo 双击 TokyoRepacker.exe 启动
-echo 全新安装需下载 JRE 并放到 D:\TokyoRepacker\jre\
-echo (打包时已自动捆绑 JRE 在 target/jre/ 下)
+echo.
+echo ======== D:\TokyoRepacker ========
+dir /b "%OUTPUT%"
+if exist "%OUTPUT%\jre" echo jre\
+echo ================================
+echo 发行版已就绪

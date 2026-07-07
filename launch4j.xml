@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch4jConfig>
+  <dontWrapJar>true</dontWrapJar>
+  <headerType>gui</headerType>
+  <jar>data.bin</jar>
+  <outfile>TokyoRepacker.exe</outfile>
+  <errTitle>TokyoRepacker</errTitle>
+  <chdir>.</chdir>
+  <jre>
+    <minVersion>21</minVersion>
+    <path>jre</path>
+    <requires64Bit>true</requires64Bit>
+  </jre>
+  <versionInfo>
+    <fileVersion>1.0.0.0</fileVersion>
+    <txtFileVersion>Beta v1.0</txtFileVersion>
+    <fileDescription>TokyoRepacker - WZ Editor</fileDescription>
+    <productName>TokyoRepacker</productName>
+    <productVersion>1.0.0.0</productVersion>
+    <txtProductVersion>Beta v1.0</txtProductVersion>
+    <copyright>TokyoEric 2026</copyright>
+  </versionInfo>
+</launch4jConfig>
