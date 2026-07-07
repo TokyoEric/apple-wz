@@ -174,6 +174,24 @@ Spring Boot 4.0.0 的 `--release 21` 与 Lombok 不兼容。编译时加参数 `
 
 ---
 
+## 关于上游的打包方式
+
+原项目 [leevccc/orange-wz](https://github.com/leevccc/orange-wz) 的 `pom.xml` **没有** Launch4j 插件，也没有任何构建脚本或 CI 配置。其 Release 版是作者**手动操作**的：
+
+1. `mvn package` — Maven 编译 + classfinal 加密
+2. 将加密后的 JAR 重命名为 `data.bin`
+3. 打开 Launch4j GUI（图形界面），配置启动模式 + 图标
+4. 点击"生成"得到 `OrzRepacker.exe`
+5. 打包 .7z，上传 GitHub Releases
+
+TokyoRepacker 将这一流程完全自动化：
+
+- `src/launcher/Launcher.cs`（33 行 C#，已入库）
+- `build-release.bat` — 一键完成 Maven 编译 + C# 启动器编译 + 部署
+- 不再依赖 Launch4j（windres 太老、传参受限等问题）
+
+---
+
 ## 与上游差异
 
 | 维度 | 上游 (leevccc/orange-wz) | TokyoRepacker |
