@@ -10,9 +10,9 @@
     </parent>
     <groupId>orange</groupId>
     <artifactId>orange-wz</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <name>orange-wz</name>
-    <description>orange-wz</description>
+    <version>1.0.0-Beta</version>
+    <name>TokyoRepacker</name>
+    <description>TokyoRepacker - WZ editor forked from orange-wz</description>
 
     <properties>
         <java.version>21</java.version>
