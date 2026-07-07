@@ -319,7 +319,10 @@ public final class DefaultMcpWorkspaceService implements McpWorkspaceService {
     private List<WzObject> getChildren(WzObject parent) {
         if (parent instanceof WzFolder folder) return folder.getChildren();
         if (parent instanceof WzDirectory dir) return dir.getChildren();
-        if (parent instanceof WzImage image) return new ArrayList<>(image.getChildren());
+        if (parent instanceof WzImage image) {
+            image.parse();
+            return new ArrayList<>(image.getChildren());
+        }
         if (parent instanceof WzImageProperty prop && prop.isListProperty()) return new ArrayList<>(prop.getChildren());
         return List.of();
     }
