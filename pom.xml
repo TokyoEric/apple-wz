@@ -203,6 +203,42 @@
                     </execution>
                 </executions>
             </plugin>
+            <!-- Launch4j: 将 JAR 封装为 EXE -->
+            <plugin>
+                <groupId>com.akathist.maven.plugins.launch4j</groupId>
+                <artifactId>launch4j-maven-plugin</artifactId>
+                <version>2.5.2</version>
+                <executions>
+                    <execution>
+                        <id>l4j-clui</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>launch4j</goal>
+                        </goals>
+                        <configuration>
+                            <headerType>gui</headerType>
+                            <outfile>${project.build.directory}/TokyoRepacker.exe</outfile>
+                            <jar>${project.build.directory}/${project.build.finalName}.jar</jar>
+                            <errTitle>TokyoRepacker</errTitle>
+                            <jre>
+                                <minVersion>21</minVersion>
+                                <path>jre</path>
+                                <bundledJre64Bit>true</bundledJre64Bit>
+                                <bundledJreAsFallback>true</bundledJreAsFallback>
+                            </jre>
+                            <versionInfo>
+                                <fileVersion>1.0.0.0</fileVersion>
+                                <txtFileVersion>Beta v1.0</txtFileVersion>
+                                <fileDescription>TokyoRepacker - WZ Editor</fileDescription>
+                                <productName>TokyoRepacker</productName>
+                                <productVersion>1.0.0.0</productVersion>
+                                <txtProductVersion>Beta v1.0</txtProductVersion>
+                                <copyright>TokyoEric 2026</copyright>
+                            </versionInfo>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 
