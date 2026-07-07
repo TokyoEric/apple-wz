@@ -201,8 +201,7 @@
                             <jre>
                                 <minVersion>21</minVersion>
                                 <path>jre</path>
-                                <bundledJre64Bit>true</bundledJre64Bit>
-                                <bundledJreAsFallback>true</bundledJreAsFallback>
+                                <requires64Bit>true</requires64Bit>
                             </jre>
                             <versionInfo>
                                 <fileVersion>1.0.0.0</fileVersion>
