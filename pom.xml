@@ -114,6 +114,26 @@
                     </archive>
                 </configuration>
             </plugin>
+            <!-- classfinal 加密 -->
+            <plugin>
+                <groupId>net.roseboy</groupId>
+                <artifactId>classfinal-maven-plugin</artifactId>
+                <version>1.2.1</version>
+                <configuration>
+                    <password>#</password>
+                    <excludes>org.spring</excludes>
+                    <packages>${project.groupId}</packages>
+                    <cfgfiles>application.properties</cfgfiles>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>classFinal</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <!-- 复制依赖库 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -152,6 +172,9 @@
                                         <include name="**/*"/>
                                     </fileset>
                                 </copy>
+                                <!-- 复制加密 JAR 为 data.bin -->
+                                <copy file="${project.build.directory}/${project.build.finalName}-encrypted.jar"
+                                      tofile="${project.build.directory}/data.bin"/>
                             </target>
                         </configuration>
                         <goals>
