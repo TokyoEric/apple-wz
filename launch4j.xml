@@ -5,6 +5,7 @@
   <jar>data.bin</jar>
   <outfile>TokyoRepacker.exe</outfile>
   <errTitle>TokyoRepacker</errTitle>
+  <icon>src/main/resources/icons/TokyoRepacker.ico</icon>
   <chdir>.</chdir>
   <jre>
     <minVersion>21</minVersion>
